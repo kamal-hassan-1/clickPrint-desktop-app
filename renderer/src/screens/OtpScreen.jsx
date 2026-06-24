@@ -7,6 +7,7 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 	const [resending, setResending] = useState(false);
 	const [showErrorModal, setShowErrorModal] = useState(false);
 	const [errorMessage, setErrorMessage] = useState("");
+	const [isNotRegistered, setIsNotRegistered] = useState(false);
 	const [verified, setVerified] = useState(false);
 	const inputRefs = useRef([]);
 
@@ -105,6 +106,8 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 					onVerified(result.data);
 				}, 1500);
 			} else {
+				const notRegistered = result.data?.errorCode === 'SHOP_NOT_REGISTERED';
+				setIsNotRegistered(notRegistered);
 				setErrorMessage(
 					result.message || "Invalid code. Please try again."
 				);
@@ -146,6 +149,7 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 	// ── Clear & retry ──
 	const handleClearAndRetry = () => {
 		setShowErrorModal(false);
+		setIsNotRegistered(false);
 		setCodes(["", "", "", "", ""]);
 		inputRefs.current[0]?.focus();
 	};
@@ -262,25 +266,44 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 			{showErrorModal && (
 				<div className="modal-overlay">
 					<div className="modal-content">
-						<h3 className="modal-title">Oops</h3>
+						<h3 className="modal-title">
+							{isNotRegistered ? "Not Registered" : "Oops"}
+						</h3>
 						<p className="modal-message">{errorMessage}</p>
 						<div className="modal-actions">
-							<button
-								className="modal-btn--cancel"
-								onClick={() => setShowErrorModal(false)}
-								id="modal-cancel-btn"
-							>
-								Cancel
-								<span>✕</span>
-							</button>
-							<button
-								className="modal-btn--retry"
-								onClick={handleClearAndRetry}
-								id="modal-retry-btn"
-							>
-								Try again
-								<span>→</span>
-							</button>
+							{isNotRegistered ? (
+								<button
+									className="modal-btn--retry"
+									onClick={() => {
+										setShowErrorModal(false);
+										setIsNotRegistered(false);
+										onBack();
+									}}
+									id="modal-try-diff-btn"
+								>
+									Try different number
+									<span>→</span>
+								</button>
+							) : (
+								<>
+									<button
+										className="modal-btn--cancel"
+										onClick={() => setShowErrorModal(false)}
+										id="modal-cancel-btn"
+									>
+										Cancel
+										<span>✕</span>
+									</button>
+									<button
+										className="modal-btn--retry"
+										onClick={handleClearAndRetry}
+										id="modal-retry-btn"
+									>
+										Try again
+										<span>→</span>
+									</button>
+								</>
+							)}
 						</div>
 					</div>
 				</div>

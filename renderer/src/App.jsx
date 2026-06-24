@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import TitleBar from "./components/TitleBar";
 import LoginScreen from "./screens/LoginScreen";
 import OtpScreen from "./screens/OtpScreen";
+import DashboardScreen from "./screens/DashboardScreen";
 
 function App() {
-	const [screen, setScreen] = useState("login"); // "login" | "otp"
+	const [screen, setScreen] = useState("login"); // "login" | "otp" | "dashboard"
 	const [phoneNumber, setPhoneNumber] = useState("");
+	const [shopProfile, setShopProfile] = useState(null);
 	const [theme, setTheme] = useState(() => {
 		const savedTheme = localStorage.getItem("theme");
 		if (savedTheme) return savedTheme;
@@ -33,9 +35,30 @@ function App() {
 	};
 
 	const handleLoginSuccess = (data) => {
-		// For now, just show a success state — future screens will go here
-		console.log("Login successful!", data);
+		setShopProfile(data.profile);
+		setScreen("dashboard");
 	};
+
+	const handleLogout = async () => {
+		await window.electronAPI.logout();
+		setShopProfile(null);
+		setPhoneNumber("");
+		setScreen("login");
+	};
+
+	if (screen === "dashboard" && shopProfile) {
+		return (
+			<div className="app-container">
+				<TitleBar theme={theme} onToggleTheme={toggleTheme} />
+				<div className="app-content">
+					<DashboardScreen
+						shopProfile={shopProfile}
+						onLogout={handleLogout}
+					/>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="app-container">

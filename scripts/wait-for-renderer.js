@@ -5,7 +5,7 @@ const RETRY_DELAY = 1000;
 
 function checkServer(retries = 0) {
   return new Promise((resolve, reject) => {
-    http.get('http://localhost:3000', (res) => {
+    http.get('http://localhost:3001', (res) => {
       resolve();
     }).on('error', () => {
       if (retries >= MAX_RETRIES) {

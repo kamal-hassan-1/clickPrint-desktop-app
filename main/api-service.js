@@ -22,13 +22,15 @@ function clearAuthState() {
 	authState = { token: null, profile: null, phoneNumber: null };
 }
 
+function authHeaders() {
+	return {
+		"Content-Type": "application/json",
+		Authorization: `Bearer ${authState.token}`,
+	};
+}
+
 // ──────────── Auth API ────────────
 
-/**
- * POST /api/auth/otp
- * Request an OTP to be sent to the given phone number.
- * @param {string} number — full phone number without '+', e.g. "923235400291"
- */
 async function sendOtp(number) {
 	try {
 		const response = await fetch(`${API_BASE_URL}/auth/otp`, {
@@ -40,7 +42,6 @@ async function sendOtp(number) {
 		const data = await response.json();
 
 		if (data.success) {
-			// Remember phone number for verify step
 			authState.phoneNumber = number;
 		}
 
@@ -57,12 +58,6 @@ async function sendOtp(number) {
 	}
 }
 
-/**
- * POST /api/auth/verify
- * Verify the OTP code and receive a JWT token + profile.
- * @param {string} code   — the 5-digit OTP code
- * @param {string} number — the phone number the OTP was sent to
- */
 async function verifyOtp(code, number) {
 	try {
 		const response = await fetch(`${API_BASE_URL}/auth/verify`, {
@@ -74,7 +69,6 @@ async function verifyOtp(code, number) {
 		const data = await response.json();
 
 		if (data.success) {
-			// Store auth state in main process memory
 			authState.token = data.data.token;
 			authState.profile = data.data.profile || null;
 			authState.phoneNumber = number;
@@ -94,9 +88,33 @@ async function verifyOtp(code, number) {
 	}
 }
 
+// ──────────── Shop API ────────────
+
+async function updateShop(shopId, data) {
+	try {
+		const response = await fetch(`${API_BASE_URL}/shops/${shopId}`, {
+			method: "PUT",
+			headers: authHeaders(),
+			body: JSON.stringify(data),
+		});
+
+		return await response.json();
+	} catch (error) {
+		console.error("[API] updateShop error:", error);
+		return {
+			success: false,
+			message:
+				error.message === "fetch failed"
+					? "Network error. Please check your internet connection."
+					: "An unexpected error occurred. Please try again.",
+		};
+	}
+}
+
 module.exports = {
 	sendOtp,
 	verifyOtp,
+	updateShop,
 	getAuthState,
 	clearAuthState,
 };

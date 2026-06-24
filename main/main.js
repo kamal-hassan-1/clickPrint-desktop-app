@@ -2,18 +2,15 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { registerIpcHandlers } = require("./ipc-handlers");
 
-// Keep a global reference of the window object to prevent garbage collection
 let mainWindow = null;
 
 const isDev = !app.isPackaged;
 
 function createWindow() {
 	mainWindow = new BrowserWindow({
-		width: 480,
-		height: 680,
-		minWidth: 420,
+		show: false,
+		minWidth: 900,
 		minHeight: 600,
-		resizable: true,
 		frame: false,
 		titleBarStyle: "hidden",
 		backgroundColor: "#F7F8FA",
@@ -24,8 +21,14 @@ function createWindow() {
 		},
 	});
 
+	// Show maximized once the page is ready to avoid the window flashing small first
+	mainWindow.once("ready-to-show", () => {
+		mainWindow.maximize();
+		mainWindow.show();
+	});
+
 	if (isDev) {
-		mainWindow.loadURL("http://localhost:3000");
+		mainWindow.loadURL("http://localhost:3001");
 	} else {
 		mainWindow.loadFile(path.join(__dirname, "../renderer/dist/index.html"));
 	}
@@ -35,10 +38,8 @@ function createWindow() {
 	});
 }
 
-// Register all IPC handlers before window creation
 registerIpcHandlers();
 
-// Window control IPC handlers
 ipcMain.on("window:minimize", () => {
 	mainWindow?.minimize();
 });
