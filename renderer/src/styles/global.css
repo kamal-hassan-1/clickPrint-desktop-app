@@ -50,6 +50,51 @@
 	/* Typography */
 	--font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
 		Roboto, sans-serif;
+
+	/* Logo styling */
+	--logo-bg: #ffffff;
+	--logo-border: rgba(0, 0, 0, 0.06);
+	--logo-shadow: 0 4px 12px rgba(143, 155, 179, 0.15);
+	--logo-filter: none;
+}
+
+[data-theme='dark'] {
+	/* Primary palette */
+	--color-primary: #00e6ad;
+	--color-primary-light: #33ebd1;
+	--color-primary-dark: #00b386;
+
+	/* Accent / CTA */
+	--color-accent: #ff570a;
+	--color-accent-light: #ff856f;
+	--color-accent-hover: #e64b00;
+
+	/* Backgrounds */
+	--color-bg: #0f1013;
+	--color-bg-card: #18191e;
+	--color-bg-input: #23252d;
+	--color-bg-input-focus: #2c2f3a;
+
+	/* Text */
+	--color-text-primary: #f1f3f9;
+	--color-text-secondary: #a0aec0;
+	--color-text-muted: #6b7280;
+
+	/* Shadows */
+	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+	--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
+	--shadow-accent: 0 4px 20px rgba(255, 87, 10, 0.2);
+	--shadow-primary: 0 4px 20px rgba(0, 230, 173, 0.15);
+
+	/* Borders */
+	--border-light: rgba(255, 255, 255, 0.08);
+
+	/* Logo styling */
+	--logo-bg: rgba(255, 255, 255, 0.04);
+	--logo-border: rgba(255, 255, 255, 0.15);
+	--logo-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+	--logo-filter: invert(1) hue-rotate(180deg) brightness(1.1);
 }
 
 /* ── Reset ── */
@@ -120,8 +165,36 @@ body {
 
 .title-bar__controls {
 	display: flex;
+	align-items: center;
 	gap: 6px;
 	-webkit-app-region: no-drag;
+}
+
+.title-bar__theme-toggle {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 5px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-text-secondary);
+	border-radius: var(--radius-sm);
+	transition: all var(--transition-fast);
+	margin-right: 6px;
+}
+
+.title-bar__theme-toggle:hover {
+	color: var(--color-text-primary);
+	background: rgba(143, 155, 179, 0.15);
+}
+
+[data-theme='dark'] .title-bar__theme-toggle:hover {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.title-bar__theme-toggle svg {
+	display: block;
 }
 
 .title-bar__btn {
@@ -130,24 +203,44 @@ body {
 	border-radius: 50%;
 	border: none;
 	cursor: pointer;
-	transition: opacity var(--transition-fast);
+	transition: opacity var(--transition-fast), color var(--transition-fast);
 	opacity: 0.85;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
-.title-bar__btn:hover {
-	opacity: 1;
+.title-bar__btn svg {
+	width: 7px;
+	height: 7px;
+	display: block;
 }
 
 .title-bar__btn--close {
 	background: #ff5f57;
+	color: rgba(76, 0, 9, 0.4);
+}
+
+.title-bar__btn--close:hover {
+	color: rgba(76, 0, 9, 0.85);
 }
 
 .title-bar__btn--minimize {
 	background: #ffbd2e;
+	color: rgba(153, 92, 0, 0.45);
+}
+
+.title-bar__btn--minimize:hover {
+	color: rgba(153, 92, 0, 0.9);
 }
 
 .title-bar__btn--maximize {
 	background: #28c840;
+	color: rgba(3, 89, 13, 0.45);
+}
+
+.title-bar__btn--maximize:hover {
+	color: rgba(3, 89, 13, 0.95);
 }
 
 /* ── Screen Container ── */
@@ -658,4 +751,45 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
 	background: rgba(143, 155, 179, 0.35);
+}
+
+/* ── Theme transitions & Logo container styles ── */
+
+body,
+.app-container,
+.title-bar,
+.screen,
+.otp-input,
+.phone-input,
+.country-code,
+.modal-content,
+.title-bar__theme-toggle,
+.logo-container {
+	transition: background-color var(--transition-base),
+		color var(--transition-base),
+		border-color var(--transition-base),
+		box-shadow var(--transition-base);
+}
+
+.logo-container {
+	width: 42px;
+	height: 42px;
+	border-radius: 12px;
+	background: var(--logo-bg);
+	border: 1px solid var(--logo-border);
+	box-shadow: var(--logo-shadow);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	padding: 4px;
+}
+
+.logo-img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	border-radius: 8px;
+	filter: var(--logo-filter);
+	transition: filter var(--transition-base);
 }

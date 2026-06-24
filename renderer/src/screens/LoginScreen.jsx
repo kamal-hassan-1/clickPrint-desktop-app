@@ -53,33 +53,8 @@ function LoginScreen({ onOtpSent }) {
 						marginBottom: "40px",
 					}}
 				>
-					<div
-						style={{
-							width: "42px",
-							height: "42px",
-							borderRadius: "12px",
-							background:
-								"linear-gradient(135deg, #00D9A3 0%, #00C793 100%)",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							boxShadow: "0 4px 20px rgba(0, 217, 163, 0.25)",
-						}}
-					>
-						<svg
-							width="22"
-							height="22"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="white"
-							strokeWidth="2.5"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<polyline points="6 9 6 2 18 2 18 9" />
-							<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-							<rect x="6" y="14" width="12" height="8" />
-						</svg>
+					<div className="logo-container">
+						<img src="icon.png" alt="ClickPrint Logo" className="logo-img" />
 					</div>
 					<div>
 						<span
