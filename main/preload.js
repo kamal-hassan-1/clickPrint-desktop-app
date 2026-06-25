@@ -8,6 +8,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getAuthState: () => ipcRenderer.invoke("auth:get-state"),
 	logout: () => ipcRenderer.invoke("auth:logout"),
 
+	// Jobs
+	fetchJobs: () => ipcRenderer.invoke("jobs:fetch"),
+	onJobsUpdate: (callback) => {
+		const handler = (_event, jobs) => callback(jobs);
+		ipcRenderer.on("jobs:updated", handler);
+		return () => ipcRenderer.removeListener("jobs:updated", handler);
+	},
+
 	// Shop
 	updateShop: (shopId, data) => ipcRenderer.invoke("shop:update", shopId, data),
 
