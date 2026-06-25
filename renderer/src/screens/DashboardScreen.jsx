@@ -1,53 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-// ── Dummy data ──────────────────────────────────────────────────────────────
+// ── Job helpers ──────────────────────────────────────────────────────────────
 
-const DUMMY_PRINT_JOBS = [
-	{
-		_id: "pj1",
-		customerName: "Ali Hassan",
-		fileName: "Assignment.pdf",
-		pages: 12,
-		copies: 2,
-		color: false,
-		status: "pending",
-		note: "Please staple when done",
-		time: "10:30 AM",
-	},
-	{
-		_id: "pj2",
-		customerName: "Sara Khan",
-		fileName: "Thesis Chapter 4.pdf",
-		pages: 48,
-		copies: 1,
-		color: true,
-		status: "pending",
-		note: "",
-		time: "10:08 AM",
-	},
-	{
-		_id: "pj3",
-		customerName: "Umar Farooq",
-		fileName: "CV_Final.docx",
-		pages: 3,
-		copies: 3,
-		color: false,
-		status: "processing",
-		note: "Urgent",
-		time: "09:45 AM",
-	},
-	{
-		_id: "pj4",
-		customerName: "Nadia Iqbal",
-		fileName: "Presentation Slides.pdf",
-		pages: 20,
-		copies: 1,
-		color: true,
-		status: "pending",
-		note: "",
-		time: "09:20 AM",
-	},
-];
+// Statuses that belong in the active Print Jobs list vs History
+const ACTIVE_STATUSES = new Set(["draft", "submitted", "processing"]);
+
+function mapStatus(serverStatus) {
+	if (serverStatus === "draft" || serverStatus === "submitted") return "pending";
+	if (serverStatus === "processing") return "processing";
+	return "completed"; // completed / cancelled / failed all use the gray dot
+}
+
+function formatTime(isoString) {
+	return new Date(isoString).toLocaleTimeString("en-US", {
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: true,
+	});
+}
+
+function transformJob(job) {
+	const firstFile = job.files?.[0];
+	const s = firstFile?.settings || {};
+	return {
+		_id: job._id,
+		fileName: firstFile ? `${firstFile.hash.slice(0, 8)}…` : "Document",
+		copies: s.numberOfCopies || 1,
+		color: s.color || false,
+		status: mapStatus(job.status),
+		rawStatus: job.status,
+		time: formatTime(job.createdAt),
+		// Detailed settings shown in the right-hand panel
+		pageType: s.pageType,
+		orientation: s.orientation,
+		pagesPerSheet: s.pagesPerSheet,
+		sidedness: s.sidedness,
+		pageSelection: s.pageSelection,
+		filesCount: job.files?.length || 0,
+	};
+}
 
 const DUMMY_HISTORY = [
 	{
@@ -158,6 +149,38 @@ function DashboardScreen({ shopProfile, onLogout }) {
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState("");
 
+	// Live job list — populated from GET /api/jobs, kept up-to-date via SSE
+	const [printJobs, setPrintJobs] = useState([]);
+	const [jobsLoading, setJobsLoading] = useState(true);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function loadJobs() {
+			setJobsLoading(true);
+			const result = await window.electronAPI.fetchJobs();
+			if (!cancelled && result.success) {
+				setPrintJobs(result.data.map(transformJob));
+			}
+			if (!cancelled) setJobsLoading(false);
+		}
+
+		loadJobs();
+
+		// Subscribe to push updates from the main process.
+		// The main process reconciles (re-fetches all jobs) on every SSE event
+		// and on every SSE reconnect, then sends the full list here.
+		const unsubscribe = window.electronAPI.onJobsUpdate((jobs) => {
+			console.log("[Renderer] jobs:updated received —", jobs.length, "jobs");
+			if (!cancelled) setPrintJobs(jobs.map(transformJob));
+		});
+
+		return () => {
+			cancelled = true;
+			unsubscribe();
+		};
+	}, []);
+
 	const TABS = [
 		{ key: "printJobs", label: "Print Jobs", Icon: PrintJobsIcon },
 		{ key: "printerManagement", label: "Printer Mgmt", Icon: PrinterIcon },
@@ -176,8 +199,10 @@ function DashboardScreen({ shopProfile, onLogout }) {
 	};
 
 	const getEntries = () => {
-		if (activeTab === "printJobs") return DUMMY_PRINT_JOBS;
-		if (activeTab === "history") return DUMMY_HISTORY;
+		if (activeTab === "printJobs")
+			return printJobs.filter((j) => ACTIVE_STATUSES.has(j.rawStatus));
+		if (activeTab === "history")
+			return [...printJobs.filter((j) => !ACTIVE_STATUSES.has(j.rawStatus)), ...DUMMY_HISTORY];
 		return [];
 	};
 
@@ -238,7 +263,7 @@ function DashboardScreen({ shopProfile, onLogout }) {
 	return (
 		<div className="dashboard">
 			{/* ── Content header ── */}
-			<header className="db-header">
+			{/* <header className="db-header">
 				<div className="db-header__shop">
 					<span className="db-shop-name">{shop?.name}</span>
 					<button
@@ -257,7 +282,7 @@ function DashboardScreen({ shopProfile, onLogout }) {
 						Logout
 					</button>
 				</div>
-			</header>
+			</header> */}
 
 			{/* ── 3-column body ── */}
 			<div className="db-body">
@@ -273,7 +298,7 @@ function DashboardScreen({ shopProfile, onLogout }) {
 							<span className="db-tab__icon">
 								<Icon />
 							</span>
-							<span className="db-tab__label">{label}</span>
+							{/* <span className="db-tab__label">{label}</span> */}
 						</button>
 					))}
 				</nav>
@@ -297,32 +322,43 @@ function DashboardScreen({ shopProfile, onLogout }) {
 
 							<div className="db-list__entries">
 								{isListTab ? (
-									getEntries().map((entry) => (
-										<button
-											key={entry._id}
-											className={`db-entry ${selectedEntry?._id === entry._id ? "db-entry--active" : ""}`}
-											onClick={() =>
-												setSelectedEntry(entry)
-											}
-										>
-											<span
-												className={`db-entry__dot db-entry__dot--${entry.status || "completed"}`}
-											/>
-											<div className="db-entry__info">
-												<span className="db-entry__name">
-													{entry.fileName}
+									jobsLoading && activeTab === "printJobs" ? (
+										<div className="db-coming-soon">
+											<div className="spinner" />
+											<p>Loading jobs…</p>
+										</div>
+									) : getEntries().length === 0 ? (
+										<div className="db-coming-soon">
+											<p>No entries</p>
+										</div>
+									) : (
+										getEntries().map((entry) => (
+											<button
+												key={entry._id}
+												className={`db-entry ${selectedEntry?._id === entry._id ? "db-entry--active" : ""}`}
+												onClick={() =>
+													setSelectedEntry(entry)
+												}
+											>
+												<span
+													className={`db-entry__dot db-entry__dot--${entry.status || "completed"}`}
+												/>
+												<div className="db-entry__info">
+													<span className="db-entry__name">
+														{entry.fileName}
+													</span>
+													<span className="db-entry__meta">
+														{entry.copies}×
+														{entry.color ? " · Color" : " · B&W"}
+														{entry.filesCount > 1 ? ` · ${entry.filesCount} files` : ""}
+													</span>
+												</div>
+												<span className="db-entry__time">
+													{entry.time}
 												</span>
-												<span className="db-entry__meta">
-													{entry.customerName} ·{" "}
-													{entry.pages}p ·{" "}
-													{entry.copies}×
-												</span>
-											</div>
-											<span className="db-entry__time">
-												{entry.time}
-											</span>
-										</button>
-									))
+											</button>
+										))
+									)
 								) : (
 									<div className="db-coming-soon">
 										<span className="db-coming-soon__icon">
@@ -345,14 +381,6 @@ function DashboardScreen({ shopProfile, onLogout }) {
 							</h3>
 							<div className="db-detail__fields">
 								<DetailField
-									label="Customer"
-									value={selectedEntry.customerName}
-								/>
-								<DetailField
-									label="Pages"
-									value={selectedEntry.pages}
-								/>
-								<DetailField
 									label="Copies"
 									value={selectedEntry.copies}
 								/>
@@ -372,12 +400,56 @@ function DashboardScreen({ shopProfile, onLogout }) {
 										<span
 											className={`db-field__value db-status db-status--${selectedEntry.status}`}
 										>
-											{selectedEntry.status
+											{(selectedEntry.rawStatus || selectedEntry.status)
 												.charAt(0)
 												.toUpperCase() +
-												selectedEntry.status.slice(1)}
+												(selectedEntry.rawStatus || selectedEntry.status).slice(1)}
 										</span>
 									</div>
+								)}
+								{selectedEntry.pageType && (
+									<DetailField
+										label="Page Type"
+										value={selectedEntry.pageType}
+									/>
+								)}
+								{selectedEntry.orientation && (
+									<DetailField
+										label="Orientation"
+										value={selectedEntry.orientation
+											.charAt(0).toUpperCase() +
+											selectedEntry.orientation.slice(1)}
+									/>
+								)}
+								{selectedEntry.pagesPerSheet > 1 && (
+									<DetailField
+										label="Per Sheet"
+										value={`${selectedEntry.pagesPerSheet} pages`}
+									/>
+								)}
+								{selectedEntry.sidedness && (
+									<DetailField
+										label="Sides"
+										value={selectedEntry.sidedness === "single"
+											? "Single-sided"
+											: selectedEntry.sidedness === "long"
+											? "Double-sided (long edge)"
+											: selectedEntry.sidedness === "short"
+											? "Double-sided (short edge)"
+											: selectedEntry.sidedness}
+									/>
+								)}
+								{selectedEntry.pageSelection && (
+									<DetailField
+										label="Pages"
+										value={selectedEntry.pageSelection}
+									/>
+								)}
+								{selectedEntry.filesCount > 1 && (
+									<DetailField
+										label="Files"
+										value={selectedEntry.filesCount}
+									/>
 								)}
 								{selectedEntry.price !== undefined && (
 									<DetailField
@@ -407,14 +479,6 @@ function DashboardScreen({ shopProfile, onLogout }) {
 					)}
 				</div>
 			</div>
-
-			{/* ── Footer ── */}
-			<footer className="db-footer">
-				<span>
-					Hi, <strong>{shop?.name}</strong>
-				</span>
-				<span className="db-footer__brand">ClickPrint</span>
-			</footer>
 
 			{/* ── Edit Shop Modal ── */}
 			{showEditModal && (

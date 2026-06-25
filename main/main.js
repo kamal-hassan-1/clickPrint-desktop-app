@@ -1,9 +1,8 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const { registerIpcHandlers } = require("./ipc-handlers");
 
 let mainWindow = null;
-
 const isDev = !app.isPackaged;
 
 function createWindow() {
@@ -38,7 +37,7 @@ function createWindow() {
 	});
 }
 
-registerIpcHandlers();
+registerIpcHandlers(() => mainWindow);
 
 ipcMain.on("window:minimize", () => {
 	mainWindow?.minimize();

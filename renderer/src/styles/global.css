@@ -148,7 +148,7 @@ body {
 	align-items: center;
 	justify-content: space-between;
 	height: 36px;
-	padding: 0 12px;
+	padding: 0 0 0 12px;
 	background: var(--color-bg);
 	-webkit-app-region: drag;
 	flex-shrink: 0;
@@ -166,7 +166,7 @@ body {
 .title-bar__controls {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 0;
 	-webkit-app-region: no-drag;
 }
 
@@ -181,7 +181,6 @@ body {
 	color: var(--color-text-secondary);
 	border-radius: var(--radius-sm);
 	transition: all var(--transition-fast);
-	margin-right: 6px;
 }
 
 .title-bar__theme-toggle:hover {
@@ -197,50 +196,64 @@ body {
 	display: block;
 }
 
-.title-bar__btn {
-	width: 14px;
+.title-bar__sep {
+	width: 1px;
 	height: 14px;
-	border-radius: 50%;
+	background: var(--border-light);
+	flex-shrink: 0;
+	margin: 0 6px;
+}
+
+.title-bar__btn {
+	width: 40px;
+	height: 36px;
+	border-radius: 0;
 	border: none;
 	cursor: pointer;
-	transition: opacity var(--transition-fast), color var(--transition-fast);
-	opacity: 0.85;
+	transition: background var(--transition-fast), color var(--transition-fast);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	background: transparent;
+	color: var(--color-text-secondary);
 }
 
 .title-bar__btn svg {
-	width: 7px;
-	height: 7px;
+	width: 10px;
+	height: 10px;
 	display: block;
 }
 
 .title-bar__btn--close {
-	background: #ff5f57;
-	color: rgba(76, 0, 9, 0.4);
+	color: var(--color-text-secondary);
 }
 
 .title-bar__btn--close:hover {
-	color: rgba(76, 0, 9, 0.85);
+	background: #c42b1c;
+	color: #ffffff;
 }
 
 .title-bar__btn--minimize {
-	background: #ffbd2e;
-	color: rgba(153, 92, 0, 0.45);
+	color: var(--color-text-secondary);
 }
 
 .title-bar__btn--minimize:hover {
-	color: rgba(153, 92, 0, 0.9);
+	background: rgba(0, 0, 0, 0.07);
+	color: var(--color-text-primary);
 }
 
 .title-bar__btn--maximize {
-	background: #28c840;
-	color: rgba(3, 89, 13, 0.45);
+	color: var(--color-text-secondary);
 }
 
 .title-bar__btn--maximize:hover {
-	color: rgba(3, 89, 13, 0.95);
+	background: rgba(0, 0, 0, 0.07);
+	color: var(--color-text-primary);
+}
+
+[data-theme='dark'] .title-bar__btn--minimize:hover,
+[data-theme='dark'] .title-bar__btn--maximize:hover {
+	background: rgba(255, 255, 255, 0.1);
 }
 
 /* ── Screen Container ── */
@@ -671,19 +684,6 @@ body {
 .whatsapp-icon {
 	color: #25d366;
 	font-size: 17px;
-}
-
-/* ── Decorative gradient line at top ── */
-
-.accent-line {
-	height: 3px;
-	background: linear-gradient(
-		90deg,
-		var(--color-primary) 0%,
-		var(--color-accent) 100%
-	);
-	border-radius: 0 0 2px 2px;
-	flex-shrink: 0;
 }
 
 /* ── Success Screen ── */
