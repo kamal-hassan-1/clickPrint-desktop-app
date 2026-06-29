@@ -5,19 +5,20 @@ import ListColumn from "../components/ListColumn";
 import WelcomePane from "../components/WelcomePane";
 import JobDetailCard from "../components/JobDetailCard";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { PrinterIcon, TrashIcon } from "../icons";
+import { CheckIcon, TrashIcon } from "../icons";
 
-// Print Jobs tab: active job queue list on the left, job details + accept/decline
-// actions on the right. Print spooling is simulated locally.
+// Print Jobs tab: active job queue list on the left, job details on the right.
+// Each file can be previewed in the OS viewer or printed silently with its own
+// settings; the whole job can be declined or marked complete from the header.
 function PrintJobsTab() {
 	const { printJobs, setPrintJobs, jobsLoading } = useJobs();
 	const [selectedEntry, setSelectedEntry] = useState(null);
 
-	// Simulated print spooling states: jobId -> "printing" | "success" | "cancelled"
-	const [jobSpoolState, setJobSpoolState] = useState({});
-
-	// Job pending a cancel confirmation (the "Are you sure?" dialog).
+	// Job pending a decline confirmation (the "Are you sure?" dialog).
 	const [pendingCancel, setPendingCancel] = useState(null);
+
+	// Job pending a mark-complete confirmation.
+	const [pendingComplete, setPendingComplete] = useState(null);
 
 	// Oldest job first, so #1 is the next one up in the queue. The top (oldest)
 	// job gets a special dashed highlight below.
@@ -25,32 +26,23 @@ function PrintJobsTab() {
 		.filter((j) => ACTIVE_STATUSES.has(j.rawStatus))
 		.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-	const triggerSimulatedPrint = (jobId) => {
-		if (jobSpoolState[jobId] === "printing") return;
-
-		setJobSpoolState((prev) => ({ ...prev, [jobId]: "printing" }));
-
-		setTimeout(() => {
+	// Optimistically applies a status change to a job, both in the list and in the
+	// current selection. Returns a revert function for use on request failure.
+	const applyStatus = (jobId, status, rawStatus) => {
+		const prevJob = printJobs.find((j) => j._id === jobId);
+		setPrintJobs((prevJobs) =>
+			prevJobs.map((j) => (j._id === jobId ? { ...j, status, rawStatus } : j))
+		);
+		setSelectedEntry((prev) => (prev?._id === jobId ? { ...prev, status, rawStatus } : prev));
+		return () => {
+			if (!prevJob) return;
 			setPrintJobs((prevJobs) =>
-				prevJobs.map((j) => (j._id === jobId ? { ...j, status: "processing", rawStatus: "processing" } : j))
+				prevJobs.map((j) => (j._id === jobId ? { ...j, status: prevJob.status, rawStatus: prevJob.rawStatus } : j))
 			);
-			setSelectedEntry((prev) => (prev?._id === jobId ? { ...prev, status: "processing", rawStatus: "processing" } : prev));
-		}, 2000);
-
-		setTimeout(() => {
-			setPrintJobs((prevJobs) =>
-				prevJobs.map((j) => (j._id === jobId ? { ...j, status: "completed", rawStatus: "completed" } : j))
-			);
-			setJobSpoolState((prev) => ({ ...prev, [jobId]: "success" }));
-			setSelectedEntry((prev) => (prev?._id === jobId ? { ...prev, status: "completed", rawStatus: "completed" } : prev));
-
-			setTimeout(() => {
-				setJobSpoolState((prev) => ({ ...prev, [jobId]: null }));
-			}, 3000);
-		}, 4500);
+		};
 	};
 
-	// Confirmed cancel: optimistically drop the job from the active list and tell
+	// Confirmed decline: optimistically drop the job from the active list and tell
 	// the backend. If the request fails, the optimistic change is reverted.
 	const handleConfirmCancel = async () => {
 		const job = pendingCancel;
@@ -58,19 +50,65 @@ function PrintJobsTab() {
 		setPendingCancel(null);
 		setSelectedEntry(null);
 
-		setPrintJobs((prevJobs) =>
-			prevJobs.map((j) => (j._id === job._id ? { ...j, status: "completed", rawStatus: "cancelled" } : j))
-		);
-
+		const revert = applyStatus(job._id, "completed", "cancelled");
 		try {
 			const result = await window.electronAPI.updateJobStatus(job._id, "cancelled");
 			if (!result?.success) throw new Error(result?.message || "request failed");
 		} catch (err) {
 			console.error("[Renderer] failed to cancel job:", err);
-			// Revert to the job's original status.
-			setPrintJobs((prevJobs) =>
-				prevJobs.map((j) => (j._id === job._id ? { ...j, status: job.status, rawStatus: job.rawStatus } : j))
-			);
+			revert();
+		}
+	};
+
+	// Confirmed complete: drop the job from the active list, hide its detail pane
+	// and notify the backend. Reverted if the backend rejects the change.
+	const handleConfirmComplete = async () => {
+		const job = pendingComplete;
+		if (!job) return;
+		setPendingComplete(null);
+		setSelectedEntry(null);
+
+		const revert = applyStatus(job._id, "completed", "completed");
+		try {
+			const result = await window.electronAPI.updateJobStatus(job._id, "completed");
+			if (!result?.success) throw new Error(result?.message || "request failed");
+		} catch (err) {
+			console.error("[Renderer] failed to mark job complete:", err);
+			revert();
+		}
+	};
+
+	// Opens a single file in the OS default viewer. Errors are logged, not shown.
+	const handlePreviewFile = async (file) => {
+		try {
+			const result = await window.electronAPI.openFile(file.fileId);
+			if (!result?.success) throw new Error(result?.message || "open failed");
+		} catch (err) {
+			console.error("[Renderer] failed to preview file:", err);
+		}
+	};
+
+	// Silently prints a file with its own settings (page size, range, color,
+	// copies, duplex) to the default printer, then moves the job to "printing" on
+	// the backend. Status only changes if the print succeeds. Errors are logged.
+	const handlePrintFile = async (file) => {
+		const job = selectedEntry;
+		if (!job) return;
+
+		try {
+			const result = await window.electronAPI.printFile(file.fileId, file.settings);
+			if (!result?.success) throw new Error(result?.message || "print failed");
+		} catch (err) {
+			console.error("[Renderer] failed to print file:", err);
+			return;
+		}
+
+		applyStatus(job._id, "processing", "printing");
+		try {
+			const result = await window.electronAPI.updateJobStatus(job._id, "printing");
+			if (!result?.success) throw new Error(result?.message || "request failed");
+		} catch (err) {
+			console.error("[Renderer] failed to set job printing:", err);
 		}
 	};
 
@@ -119,45 +157,27 @@ function PrintJobsTab() {
 				{selectedEntry ? (
 					<JobDetailCard
 						entry={selectedEntry}
-						spoolState={jobSpoolState[selectedEntry._id]}
-						actions={
+						onPreviewFile={handlePreviewFile}
+						onPrintFile={handlePrintFile}
+						headerActions={
 							selectedEntry.status !== "completed" ? (
 								<>
 									<button
 										className="btn-outline btn-outline-danger"
 										onClick={() => setPendingCancel(selectedEntry)}
-										disabled={jobSpoolState[selectedEntry._id] === "printing"}
 									>
 										<TrashIcon />
 										Decline Job
 									</button>
 									<button
 										className="btn-gradient"
-										onClick={() => triggerSimulatedPrint(selectedEntry._id)}
-										disabled={jobSpoolState[selectedEntry._id] === "printing"}
+										onClick={() => setPendingComplete(selectedEntry)}
 									>
-										{jobSpoolState[selectedEntry._id] === "printing" ? (
-											<>
-												<div className="spinner spinner--dark" style={{ borderTopColor: "#111b21", width: "14px", height: "14px" }} />
-												Printing...
-											</>
-										) : (
-											<>
-												<PrinterIcon />
-												Accept & Print
-											</>
-										)}
+										<CheckIcon />
+										Mark as Complete
 									</button>
 								</>
-							) : (
-								<button
-									className="btn-outline"
-									onClick={() => triggerSimulatedPrint(selectedEntry._id)}
-								>
-									<PrinterIcon />
-									Reprint Document
-								</button>
-							)
+							) : null
 						}
 					/>
 				) : (
@@ -174,6 +194,17 @@ function PrintJobsTab() {
 					danger
 					onConfirm={handleConfirmCancel}
 					onCancel={() => setPendingCancel(null)}
+				/>
+			)}
+
+			{pendingComplete && (
+				<ConfirmDialog
+					title="Mark this job as complete?"
+					message={`Are you sure "${pendingComplete.fileName}" is done? This action can't be undone, and the customer will be notified that their print is ready.`}
+					confirmLabel="Yes, mark complete"
+					cancelLabel="Not yet"
+					onConfirm={handleConfirmComplete}
+					onCancel={() => setPendingComplete(null)}
 				/>
 			)}
 		</>

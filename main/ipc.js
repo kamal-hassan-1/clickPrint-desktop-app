@@ -16,7 +16,7 @@ const {
 	startJobsSse,
 	stopJobsSse,
 } = require("./api");
-const { syncJobFiles, getStatusMap, setNotifier } = require("./files");
+const { syncJobFiles, getStatusMap, setNotifier, openFile, printFile } = require("./files");
 
 function registerIpcHandlers(getMainWindow) {
 	// Push per-file download status updates to the renderer as they happen.
@@ -111,6 +111,28 @@ function registerIpcHandlers(getMainWindow) {
 
 	ipcMain.handle("files:status", async () => {
 		return getStatusMap();
+	});
+
+	ipcMain.handle("files:open", async (_event, fileId) => {
+		console.log(`[IPC] files:open → ${fileId}`);
+		try {
+			await openFile(fileId);
+			return { success: true };
+		} catch (error) {
+			console.error(`[IPC] files:open ${fileId} error:`, error.message);
+			return { success: false, message: error.message };
+		}
+	});
+
+	ipcMain.handle("files:print", async (_event, fileId, settings) => {
+		console.log(`[IPC] files:print → ${fileId}`);
+		try {
+			await printFile(fileId, settings);
+			return { success: true };
+		} catch (error) {
+			console.error(`[IPC] files:print ${fileId} error:`, error.message);
+			return { success: false, message: error.message };
+		}
 	});
 }
 

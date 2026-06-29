@@ -1554,7 +1554,43 @@ body,
 }
 
 .job-detail .db-detail__title {
+	margin-bottom: 0;
+}
+
+/* Title row: "Document Details" + prominent decline / mark-complete buttons. */
+.job-detail__titlebar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
 	margin-bottom: 16px;
+}
+
+.job-detail__header-actions {
+	display: flex;
+	gap: 12px;
+	flex-shrink: 0;
+}
+
+/* Buttons in the header / per-file rows size to their content rather than
+   stretching like the full-width footer variants. */
+.job-detail__header-actions .btn-outline,
+.job-detail__header-actions .btn-gradient,
+.file-preview__actions .btn-outline,
+.file-preview__actions .btn-gradient {
+	flex: 0 0 auto;
+}
+
+/* Per-file preview / print actions under each file preview. */
+.file-preview__actions {
+	display: flex;
+	gap: 10px;
+	padding: 0 18px 16px;
+}
+
+.btn-sm {
+	padding: 8px 16px;
+	font-size: 13px;
 }
 
 .detail-quad {
@@ -1712,29 +1748,6 @@ body,
 .file-preview__settings .receipt-label,
 .file-preview__settings .receipt-value {
 	font-size: 12.5px;
-}
-
-/* ── Compact spool status banner inside the overview tile ── */
-.spool-banner {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	margin-top: 4px;
-	padding: 10px 12px;
-	border-radius: var(--radius-md);
-	border: 1px solid var(--color-primary);
-	font-size: 12.5px;
-	font-weight: 600;
-}
-
-.spool-banner--active {
-	background: rgba(0, 230, 173, 0.05);
-	color: var(--color-text-primary);
-}
-
-.spool-banner--done {
-	background: rgba(0, 230, 173, 0.1);
-	color: var(--color-primary);
 }
 
 /* ── Confirmation modal ── */

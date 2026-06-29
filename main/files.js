@@ -1,7 +1,7 @@
 const fs = require("fs");
 const fsp = require("fs/promises");
 const path = require("path");
-const { app, protocol } = require("electron");
+const { app, protocol, shell, BrowserWindow } = require("electron");
 const { fetchFileBuffer } = require("./api");
 
 // Job files are downloaded once and cached on disk under userData. All files are
@@ -107,6 +107,78 @@ function syncJobFiles(jobs) {
 	);
 }
 
+// Opens a cached file in the OS default application (e.g. the system PDF viewer).
+async function openFile(fileId) {
+	await ensureFile(fileId);
+	if (!isReady(fileId)) throw new Error("file not ready");
+	const error = await shell.openPath(localPath(fileId));
+	if (error) throw new Error(error);
+}
+
+// Parses a human page range like "1-3,5" into Electron's 0-based {from,to} list.
+// Returns null for "all pages" / empty input so the whole document prints.
+function parsePageRanges(selection) {
+	if (!selection || /all/i.test(selection)) return null;
+	const ranges = [];
+	for (const part of String(selection).split(",")) {
+		const match = part.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+		if (!match) continue;
+		const from = parseInt(match[1], 10) - 1;
+		const to = match[2] ? parseInt(match[2], 10) - 1 : from;
+		if (from >= 0 && to >= from) ranges.push({ from, to });
+	}
+	return ranges.length ? ranges : null;
+}
+
+// Electron's webContents.print only accepts these named page sizes (anything
+// else must be passed as a {width,height} object, so we just drop unknowns and
+// let the printer default decide).
+const VALID_PAGE_SIZES = new Set(["A0", "A1", "A2", "A3", "A4", "A5", "A6", "Legal", "Letter", "Tabloid"]);
+
+// Maps a file's print settings onto Electron's webContents.print options. Used
+// for silent printing, so every option here is applied directly to the job.
+function buildPrintOptions(settings = {}) {
+	const options = { silent: true, printBackground: true };
+
+	if (typeof settings.color === "boolean") options.color = settings.color;
+	if (settings.numberOfCopies) options.copies = settings.numberOfCopies;
+	if (settings.orientation) options.landscape = settings.orientation === "landscape";
+	if (settings.pageType && VALID_PAGE_SIZES.has(settings.pageType)) options.pageSize = settings.pageType;
+
+	const duplex = { single: "simplex", long: "longEdge", short: "shortEdge", double: "longEdge" }[settings.sidedness];
+	if (duplex) options.duplexMode = duplex;
+
+	const ranges = parsePageRanges(settings.pageSelection);
+	if (ranges) options.pageRanges = ranges;
+
+	return options;
+}
+
+// Loads a cached PDF into an offscreen window and prints it silently to the
+// default printer with the document's own settings applied. Resolves once the
+// print job is spooled; rejects if printing fails.
+async function printFile(fileId, settings) {
+	await ensureFile(fileId);
+	if (!isReady(fileId)) throw new Error("file not ready");
+
+	// `plugins: true` is required so Chromium's PDF viewer actually renders the
+	// document — without it the print job comes out blank.
+	const win = new BrowserWindow({ show: false, webPreferences: { plugins: true } });
+	try {
+		await win.loadFile(localPath(fileId));
+		// Give the PDF plugin a moment to lay the document out before printing.
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		await new Promise((resolve, reject) => {
+			win.webContents.print(buildPrintOptions(settings), (success, failureReason) => {
+				if (success) resolve();
+				else reject(new Error(failureReason || "print failed"));
+			});
+		});
+	} finally {
+		if (!win.isDestroyed()) win.destroy();
+	}
+}
+
 // Registers the privileged scheme. Must be called before app `ready`.
 function registerFileSchemePrivileges() {
 	protocol.registerSchemesAsPrivileged([
@@ -143,6 +215,8 @@ module.exports = {
 	syncJobFiles,
 	getStatusMap,
 	setNotifier,
+	openFile,
+	printFile,
 	registerFileSchemePrivileges,
 	registerFileProtocol,
 };

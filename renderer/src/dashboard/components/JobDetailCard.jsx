@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckIcon, PdfGlyph, UserGlyph } from "../icons";
+import { PdfGlyph, UserGlyph, PrinterIcon, EyeIcon } from "../icons";
 import { useFiles } from "../FilesContext";
 
 // ── Settings display helpers ──────────────────────────────────────────────────
@@ -69,7 +69,7 @@ function FileThumb({ file }) {
 	);
 }
 
-function FilePreview({ file, index }) {
+function FilePreview({ file, index, onPreview, onPrint }) {
 	const settings = file.settings || {};
 	return (
 		<div className="file-preview">
@@ -90,6 +90,22 @@ function FilePreview({ file, index }) {
 					))}
 				</div>
 			</div>
+			{(onPreview || onPrint) && (
+				<div className="file-preview__actions">
+					{onPreview && (
+						<button className="btn-outline btn-sm" onClick={() => onPreview(file)}>
+							<EyeIcon />
+							Preview
+						</button>
+					)}
+					{onPrint && (
+						<button className="btn-gradient btn-sm" onClick={() => onPrint(file)}>
+							<PrinterIcon />
+							Print
+						</button>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }
@@ -101,15 +117,19 @@ function FilePreview({ file, index }) {
 //   ├────────────┤   File previews  │  (right column spans both rows, scrolls)
 //   │    Cost    │                  │
 //   └────────────┴──────────────────┘
-// `spoolState` drives the live status banner; `actions` is an optional node
-// (accept/decline buttons) rendered in the left column footer.
-function JobDetailCard({ entry, spoolState, actions }) {
+// `headerActions` is an optional node (decline / mark-complete buttons) rendered
+// beside the title. Per-file preview/print handlers, when provided, render
+// action buttons under each file.
+function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile }) {
 	const files = entry.files || [];
 	const cost = entry.cost;
 
 	return (
 		<div className="job-detail">
-			<h3 className="db-detail__title">Document Details</h3>
+			<div className="job-detail__titlebar">
+				<h3 className="db-detail__title">Document Details</h3>
+				{headerActions && <div className="job-detail__header-actions">{headerActions}</div>}
+			</div>
 
 			<div className="detail-quad">
 				{/* Top-left — job overview */}
@@ -131,7 +151,7 @@ function JobDetailCard({ entry, spoolState, actions }) {
 						<div className="receipt-row">
 							<span className="receipt-label">Job Status</span>
 							<span className={`db-status db-status--${entry.status}`}>
-								{spoolState === "printing" ? "Spooling..." : entry.rawStatus || entry.status}
+								{entry.rawStatus || entry.status}
 							</span>
 						</div>
 						<div className="receipt-row">
@@ -152,19 +172,6 @@ function JobDetailCard({ entry, spoolState, actions }) {
 								<span className="receipt-value" style={{ maxWidth: "200px", fontSize: "12px", color: "var(--color-text-secondary)", textAlign: "right", fontStyle: "italic" }}>
 									"{entry.note}"
 								</span>
-							</div>
-						)}
-
-						{spoolState === "printing" && (
-							<div className="spool-banner spool-banner--active">
-								<div className="spinner spinner--dark" style={{ borderTopColor: "var(--color-primary)" }} />
-								<span>Sending {files.length || 1} file{files.length === 1 ? "" : "s"} to printer queue…</span>
-							</div>
-						)}
-						{spoolState === "success" && (
-							<div className="spool-banner spool-banner--done">
-								<CheckIcon />
-								<span>Job printed successfully!</span>
 							</div>
 						)}
 					</div>
@@ -206,7 +213,6 @@ function JobDetailCard({ entry, spoolState, actions }) {
 							<span className="receipt-total-value">Rs. {cost?.total ?? entry.price}</span>
 						</div>
 					</div>
-					{actions && <div className="detail-tile__footer">{actions}</div>}
 				</div>
 
 				{/* Right — file previews (spans both rows, scrolls) */}
@@ -216,7 +222,13 @@ function JobDetailCard({ entry, spoolState, actions }) {
 					</div>
 					<div className="detail-tile__body--scroll file-preview-list">
 						{files.map((file, index) => (
-							<FilePreview key={file.fileId || index} file={file} index={index} />
+							<FilePreview
+								key={file.fileId || index}
+								file={file}
+								index={index}
+								onPreview={onPreviewFile}
+								onPrint={onPrintFile}
+							/>
 						))}
 					</div>
 				</div>

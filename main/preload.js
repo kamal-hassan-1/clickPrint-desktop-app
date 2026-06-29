@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	// URL the renderer can embed to view a cached file.
 	fileUrl: (fileId) => `clickfile://file/${fileId}`,
+	// Open a cached file in the OS default viewer / native print dialog.
+	openFile: (fileId) => ipcRenderer.invoke("files:open", fileId),
+	printFile: (fileId, settings) => ipcRenderer.invoke("files:print", fileId, settings),
 
 	// Shop
 	updateShop: (shopId, data) => ipcRenderer.invoke("shop:update", shopId, data),
