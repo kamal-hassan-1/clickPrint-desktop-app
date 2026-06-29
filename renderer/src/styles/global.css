@@ -2469,6 +2469,7 @@ body,
 .kpi-card--blue    { --kpi-accent: #3b9eff; }
 .kpi-card--violet  { --kpi-accent: #9b7bff; }
 .kpi-card--danger  { --kpi-accent: var(--color-accent); }
+.kpi-card--slate   { --kpi-accent: #5b8def; }
 
 .kpi-card__top {
 	display: flex;
@@ -2501,6 +2502,17 @@ body,
 	color: var(--color-text-primary);
 	font-variant-numeric: tabular-nums;
 	line-height: 1.1;
+}
+
+.kpi-card__value--text {
+	font-size: 17px;
+	line-height: 1.3;
+	letter-spacing: -0.2px;
+	word-break: break-word;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
 }
 
 .kpi-card__sub {

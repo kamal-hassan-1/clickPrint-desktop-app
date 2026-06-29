@@ -7,6 +7,7 @@ import {
 	BanIcon,
 	TrophyIcon,
 	RefreshIcon,
+	PrinterIcon,
 } from "../icons";
 
 // Animated count-up for the KPI values. Eases from 0 → target on mount / change.
@@ -178,6 +179,7 @@ function TotalsPanel({ stats }) {
 // Dashboard tab — analytics computed from GET /api/history.
 function DashboardTab() {
 	const [stats, setStats] = useState(null);
+	const [printer, setPrinter] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
@@ -185,7 +187,11 @@ function DashboardTab() {
 		setLoading(true);
 		setError(null);
 		try {
-			const result = await window.electronAPI.fetchHistory();
+			const [result, selected] = await Promise.all([
+				window.electronAPI.fetchHistory(),
+				window.electronAPI.getSelectedPrinter(),
+			]);
+			setPrinter(selected || null);
 			if (result.success) {
 				setStats(computeStats(result.data || []));
 			} else {
@@ -240,7 +246,7 @@ function DashboardTab() {
 							label="Today's Earnings"
 							value={stats.todayRevenue}
 							sub={`${stats.todayCompleted} completed today`}
-							delay={0}
+							delay={70}
 						/>
 						<KpiCard
 							accent="blue"
@@ -248,7 +254,7 @@ function DashboardTab() {
 							label="Print Requests Today"
 							value={stats.todayRequests}
 							sub="new jobs received"
-							delay={70}
+							delay={140}
 						/>
 						<KpiCard
 							accent="violet"
@@ -256,7 +262,7 @@ function DashboardTab() {
 							label="Pages Printed Today"
 							value={stats.todayPages}
 							sub="across completed jobs"
-							delay={140}
+							delay={210}
 						/>
 						<KpiCard
 							accent="danger"
@@ -264,8 +270,20 @@ function DashboardTab() {
 							label="Cancelled Jobs"
 							value={stats.cancelledCount}
 							sub={`${stats.cancellationRate}% of all jobs`}
-							delay={210}
+							delay={280}
 						/>
+						<div className="kpi-card kpi-card--slate" style={{ animationDelay: "0ms" }}>
+							<div className="kpi-card__top">
+								<span className="kpi-card__icon"><PrinterIcon /></span>
+								<span className="kpi-card__label">Selected Printer</span>
+							</div>
+							<div className="kpi-card__value kpi-card__value--text" title={printer?.displayName || ""}>
+								{printer?.displayName || "Not set"}
+							</div>
+							<div className="kpi-card__sub">
+								{printer ? "Used for all print jobs" : "Choose one in the Printers tab"}
+							</div>
+						</div>
 					</div>
 
 					<div className="dash__grid">

@@ -1,6 +1,7 @@
 const path = require('path');
 const { registerIpcHandlers } = require('./ipc');
 const { registerFileSchemePrivileges, registerFileProtocol } = require('./files');
+const { loadPersistedAuth } = require('./state');
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 
 // Privileged scheme registration must happen before the app is ready.
@@ -77,6 +78,9 @@ ipcMain.on("window:minimize", () => window?.minimize());
 ipcMain.on("window:maximize", () => window.isMaximized() ? window.unmaximize() : window?.maximize());
 
 app.whenReady().then(() => {
+	// Restore any saved session before handlers register (they check for a token
+	// to resume the live jobs sync on startup).
+	loadPersistedAuth();
 	registerFileProtocol();
 	createWindow();
 	createTray();

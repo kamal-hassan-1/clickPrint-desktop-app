@@ -1,5 +1,9 @@
+const store = require("./store");
+
+const EMPTY_AUTH = { token: null, profile: null, phoneNumber: null, shopId: null };
+
 const state = {
-	auth: { token: null, profile: null, phoneNumber: null, shopId: null },
+	auth: { ...EMPTY_AUTH },
 	jobs: [],
 };
 
@@ -9,11 +13,25 @@ function getAuth() {
 
 function setAuth(updates) {
 	Object.assign(state.auth, updates);
+	// Persist so the session survives an app restart (auto-login).
+	store.set("auth", state.auth);
 }
 
 function clearAuth() {
-	state.auth = { token: null, profile: null, phoneNumber: null, shopId: null };
+	state.auth = { ...EMPTY_AUTH };
 	state.jobs = [];
+	store.remove("auth");
+}
+
+// Restores a previously-saved session into memory on startup. Must be called
+// after the app is ready (store path resolves under userData).
+function loadPersistedAuth() {
+	const saved = store.get("auth");
+	if (saved && saved.token) {
+		Object.assign(state.auth, saved);
+		console.log("[State] restored persisted session for shop", state.auth.shopId);
+	}
+	return getAuth();
 }
 
 function getJobs() {
@@ -24,4 +42,4 @@ function setJobs(jobs) {
 	state.jobs = jobs;
 }
 
-module.exports = { getAuth, setAuth, clearAuth, getJobs, setJobs };
+module.exports = { getAuth, setAuth, clearAuth, loadPersistedAuth, getJobs, setJobs };

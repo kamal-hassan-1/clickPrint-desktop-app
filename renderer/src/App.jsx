@@ -8,6 +8,7 @@ function App() {
 	const [screen, setScreen] = useState("login"); // "login" | "otp" | "dashboard"
 	const [phoneNumber, setPhoneNumber] = useState("");
 	const [shopProfile, setShopProfile] = useState(null);
+	const [restoring, setRestoring] = useState(true); // checking for a saved session
 	const [theme, setTheme] = useState(() => {
 		const savedTheme = localStorage.getItem("theme");
 		if (savedTheme) return savedTheme;
@@ -20,6 +21,29 @@ function App() {
 		document.documentElement.setAttribute("data-theme", theme);
 		localStorage.setItem("theme", theme);
 	}, [theme]);
+
+	// On launch, restore a persisted session (if any) so the operator stays
+	// logged in across restarts.
+	useEffect(() => {
+		let cancelled = false;
+		window.electronAPI
+			.getAuthState()
+			.then((auth) => {
+				if (cancelled) return;
+				if (auth?.token && auth?.profile) {
+					setShopProfile(auth.profile);
+					setPhoneNumber(auth.phoneNumber || "");
+					setScreen("dashboard");
+				}
+			})
+			.catch((err) => console.warn("[Renderer] session restore failed:", err))
+			.finally(() => {
+				if (!cancelled) setRestoring(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	const toggleTheme = () => {
 		setTheme((prev) => (prev === "dark" ? "light" : "dark"));
@@ -45,6 +69,17 @@ function App() {
 		setPhoneNumber("");
 		setScreen("login");
 	};
+
+	if (restoring) {
+		return (
+			<div className="app-container">
+				<TitleBar theme={theme} onToggleTheme={toggleTheme} />
+				<div className="app-content" style={{ alignItems: "center", justifyContent: "center" }}>
+					<div className="spinner spinner--dark" />
+				</div>
+			</div>
+		);
+	}
 
 	if (screen === "dashboard" && shopProfile) {
 		return (

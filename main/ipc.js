@@ -17,8 +17,25 @@ const {
 	stopJobsSse,
 } = require("./api");
 const { syncJobFiles, getStatusMap, setNotifier, openFile, printFile } = require("./files");
+const { listPrinters, printTestPage } = require("./printers");
+const store = require("./store");
 
 function registerIpcHandlers(getMainWindow) {
+	// Starts the live jobs SSE stream and pushes every update to the renderer.
+	// Shared by fresh logins (auth:verify-otp) and restored sessions (startup).
+	const beginJobsSync = () => {
+		startJobsSse((jobs) => {
+			const win = getMainWindow();
+			console.log(`[IPC] Pushing jobs:updated — ${jobs.length} jobs, window=${win ? "open" : "null"}`);
+			if (win && !win.isDestroyed()) {
+				win.webContents.send("jobs:updated", jobs);
+			}
+			// Acknowledge new jobs to the backend and download their files.
+			acknowledgeNewJobs(jobs);
+			syncJobFiles(jobs);
+		});
+	};
+
 	// Push per-file download status updates to the renderer as they happen.
 	setNotifier((updates) => {
 		const win = getMainWindow();
@@ -36,19 +53,10 @@ function registerIpcHandlers(getMainWindow) {
 		console.log("[IPC] auth:verify-otp →", number);
 		const result = await verifyOtp(code, number);
 		if (result.success) {
-			// Start the SSE connection now that we have a token.
-			// On every reconnect or event the main process re-fetches the full
-			// job list and pushes it to the renderer — renderer is never stale.
-			startJobsSse((jobs) => {
-				const win = getMainWindow();
-				console.log(`[IPC] Pushing jobs:updated — ${jobs.length} jobs, window=${win ? "open" : "null"}`);
-				if (win && !win.isDestroyed()) {
-					win.webContents.send("jobs:updated", jobs);
-				}
-				// Acknowledge new jobs to the backend and download their files.
-				acknowledgeNewJobs(jobs);
-				syncJobFiles(jobs);
-			});
+			// Start the SSE connection now that we have a token. On every reconnect
+			// or event the main process re-fetches the full job list and pushes it
+			// to the renderer — renderer is never stale.
+			beginJobsSync();
 		}
 		return result;
 	});
@@ -134,6 +142,45 @@ function registerIpcHandlers(getMainWindow) {
 			return { success: false, message: error.message };
 		}
 	});
+
+	// ── Printers ──────────────────────────────────────────────────────────────
+	ipcMain.handle("printers:list", async () => {
+		try {
+			const printers = await listPrinters(getMainWindow());
+			return { success: true, data: printers };
+		} catch (error) {
+			console.error("[IPC] printers:list error:", error.message);
+			return { success: false, message: error.message, data: [] };
+		}
+	});
+
+	ipcMain.handle("printers:test", async (_event, deviceName) => {
+		console.log(`[IPC] printers:test → ${deviceName}`);
+		try {
+			await printTestPage(deviceName);
+			return { success: true };
+		} catch (error) {
+			console.error("[IPC] printers:test error:", error.message);
+			return { success: false, message: error.message };
+		}
+	});
+
+	ipcMain.handle("printers:get-selected", async () => {
+		return store.get("selectedPrinter") || null;
+	});
+
+	ipcMain.handle("printers:set-selected", async (_event, printer) => {
+		console.log("[IPC] printers:set-selected →", printer?.name);
+		store.set("selectedPrinter", printer);
+		return { success: true };
+	});
+
+	// If a session was restored from disk on startup, begin syncing jobs right
+	// away so the dashboard is live without requiring a fresh login.
+	if (getAuthState().token) {
+		console.log("[IPC] Restoring session — starting jobs sync");
+		beginJobsSync();
+	}
 }
 
 module.exports = { registerIpcHandlers };
