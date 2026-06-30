@@ -6,12 +6,12 @@ function LoginScreen({ onOtpSent }) {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 
-	// Build full number: remove '+' prefix → "923012345678"
+	// full number: remove '+' prefix
 	const fullNumber = countryCode.slice(1) + phone;
 	const isValidPhone =
 		phone.length > 0 &&
-		phone.length <= 11 &&
-		/^[1-9]\d{7,14}$/.test(fullNumber);
+		phone.length <= 10 &&
+		/^923[0-9]{9}$/.test(fullNumber);
 
 	const handleContinue = async () => {
 		if (!isValidPhone || loading) return;
@@ -20,7 +20,6 @@ function LoginScreen({ onOtpSent }) {
 		setLoading(true);
 
 		try {
-			// IPC call → main process → API
 			const result = await window.electronAPI.sendOtp(fullNumber);
 
 			if (result.success) {
@@ -150,5 +149,4 @@ function LoginScreen({ onOtpSent }) {
 		</div>
 	);
 }
-
 export default LoginScreen;

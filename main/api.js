@@ -84,7 +84,6 @@ async function fetchJobs() {
 	}
 }
 
-// Updates a job's status on the backend (e.g. acknowledging a new job).
 async function updateJobStatus(jobId, status) {
 	try {
 		const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/status`, {
@@ -102,12 +101,9 @@ async function updateJobStatus(jobId, status) {
 	}
 }
 
-// Returns the current in-memory auth state (token, profile, etc.).
 function getAuthState() {
 	return getAuth();
 }
-
-// Clears all auth + cached job state (used on logout).
 function clearAuthState() {
 	clearAuth();
 }

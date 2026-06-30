@@ -22,8 +22,6 @@ function App() {
 		localStorage.setItem("theme", theme);
 	}, [theme]);
 
-	// On launch, restore a persisted session (if any) so the operator stays
-	// logged in across restarts.
 	useEffect(() => {
 		let cancelled = false;
 		window.electronAPI
