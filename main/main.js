@@ -2,6 +2,7 @@ const path = require('path');
 const { registerIpcHandlers } = require('./ipc');
 const { registerFileSchemePrivileges, registerFileProtocol } = require('./files');
 const { loadPersistedAuth } = require('./state');
+const { startOfflineWatcher } = require('./printers');
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 
 // Privileged scheme registration must happen before the app is ready.
@@ -75,6 +76,9 @@ app.whenReady().then(() => {
 	registerFileProtocol();
 	createWindow();
 	createTray();
+	// Warm the printer offline-state cache and keep it fresh in the background so
+	// listing printers never blocks on a PowerShell spawn.
+	startOfflineWatcher();
 });
 
 app.on("window-all-closed", () => app.quit());

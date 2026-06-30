@@ -19,12 +19,12 @@ function PrintersTab() {
 	const [testState, setTestState] = useState({}); // name -> "testing" | "success" | "error"
 	const [saving, setSaving] = useState(false);
 
-	const loadPrinters = useCallback(async () => {
+	const loadPrinters = useCallback(async (force = false) => {
 		setLoading(true);
 		setError(null);
 		try {
 			const [result, selected] = await Promise.all([
-				window.electronAPI.listPrinters(),
+				window.electronAPI.listPrinters(force),
 				window.electronAPI.getSelectedPrinter(),
 			]);
 			if (result.success) setPrinters(result.data || []);
@@ -80,7 +80,7 @@ function PrintersTab() {
 				title="Printers"
 				count={printers.length}
 				action={
-					<button className="db-list__add" onClick={loadPrinters} title="Refresh">
+					<button className="db-list__add" onClick={() => loadPrinters(true)} title="Refresh">
 						Refresh
 					</button>
 				}

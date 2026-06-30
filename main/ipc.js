@@ -144,9 +144,9 @@ function registerIpcHandlers(getMainWindow) {
 	});
 
 	// ── Printers ──────────────────────────────────────────────────────────────
-	ipcMain.handle("printers:list", async () => {
+	ipcMain.handle("printers:list", async (_event, force) => {
 		try {
-			const printers = await listPrinters(getMainWindow());
+			const printers = await listPrinters(getMainWindow(), force);
 			return { success: true, data: printers };
 		} catch (error) {
 			console.error("[IPC] printers:list error:", error.message);

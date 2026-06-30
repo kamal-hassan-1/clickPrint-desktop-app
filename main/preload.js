@@ -32,7 +32,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	printFile: (fileId, settings) => ipcRenderer.invoke("files:print", fileId, settings),
 
 	// Printers
-	listPrinters: () => ipcRenderer.invoke("printers:list"),
+	listPrinters: (force) => ipcRenderer.invoke("printers:list", force),
 	testPrinter: (deviceName) => ipcRenderer.invoke("printers:test", deviceName),
 	getSelectedPrinter: () => ipcRenderer.invoke("printers:get-selected"),
 	setSelectedPrinter: (printer) => ipcRenderer.invoke("printers:set-selected", printer),
