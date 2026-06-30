@@ -56,7 +56,10 @@ function createWindow() {
 	});
 
 	window.on("closed", () => window = null);
-	window.once("ready-to-show", () => window.show());
+	window.once("ready-to-show", () => {
+		window.maximize();
+		window.show();
+	});
 
 	app.isPackaged
 	?	window.loadFile(path.join(__dirname, "../renderer/dist/index.html"))

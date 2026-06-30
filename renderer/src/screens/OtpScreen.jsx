@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 function OtpScreen({ phoneNumber, onBack, onVerified }) {
 	const [codes, setCodes] = useState(["", "", "", "", ""]);
-	const [timer, setTimer] = useState(90);
+	const [timer, setTimer] = useState(60);
 	const [verifying, setVerifying] = useState(false);
 	const [resending, setResending] = useState(false);
 	const [showErrorModal, setShowErrorModal] = useState(false);
@@ -11,7 +11,6 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 	const [verified, setVerified] = useState(false);
 	const inputRefs = useRef([]);
 
-	// ── Countdown timer ──
 	useEffect(() => {
 		if (timer <= 0) return;
 		const interval = setInterval(() => {
@@ -42,12 +41,10 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 			newCodes[index] = value;
 			setCodes(newCodes);
 
-			// Auto-advance to next input
 			if (value && index < 4) {
 				inputRefs.current[index + 1]?.focus();
 			}
 
-			// Auto-verify when all 5 digits entered
 			if (
 				newCodes.every((c) => c !== "") &&
 				index === 4 &&
@@ -66,7 +63,6 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 		}
 	};
 
-	// ── Handle paste ──
 	const handlePaste = (e) => {
 		e.preventDefault();
 		const pasted = e.clipboardData
@@ -81,17 +77,14 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 		}
 		setCodes(newCodes);
 
-		// Focus the next empty or last input
 		const nextEmpty = newCodes.findIndex((c) => c === "");
 		inputRefs.current[nextEmpty === -1 ? 4 : nextEmpty]?.focus();
 
-		// Auto-verify if all 5 pasted
 		if (pasted.length === 5 && !verifying) {
 			handleVerify(pasted);
 		}
 	};
 
-	// ── Verify OTP via IPC ──
 	const handleVerify = async (code) => {
 		if (verifying) return;
 		setVerifying(true);
@@ -101,7 +94,6 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 
 			if (result.success) {
 				setVerified(true);
-				// Short delay before calling onVerified so the user sees the success state
 				setTimeout(() => {
 					onVerified(result.data);
 				}, 1500);
@@ -121,7 +113,6 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 		}
 	};
 
-	// ── Resend OTP via IPC ──
 	const handleResend = async () => {
 		if (timer > 0 || resending) return;
 		setResending(true);
@@ -130,7 +121,7 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 			const result = await window.electronAPI.sendOtp(phoneNumber);
 			if (result.success) {
 				setCodes(["", "", "", "", ""]);
-				setTimer(30);
+				setTimer(60);
 				inputRefs.current[0]?.focus();
 			} else {
 				setErrorMessage(
@@ -146,7 +137,6 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 		}
 	};
 
-	// ── Clear & retry ──
 	const handleClearAndRetry = () => {
 		setShowErrorModal(false);
 		setIsNotRegistered(false);
@@ -154,7 +144,6 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 		inputRefs.current[0]?.focus();
 	};
 
-	// ── If verified, show success ──
 	if (verified) {
 		return (
 			<div className="success-container">
@@ -262,7 +251,6 @@ function OtpScreen({ phoneNumber, onBack, onVerified }) {
 				)}
 			</div>
 
-			{/* Error Modal */}
 			{showErrorModal && (
 				<div className="modal-overlay">
 					<div className="modal-content">
