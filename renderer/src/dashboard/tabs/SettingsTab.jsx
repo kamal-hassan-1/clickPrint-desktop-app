@@ -145,9 +145,11 @@ function PricingSettings() {
 	const [editing, setEditing] = useState(null); // price object, { keys: {} } for new, or null
 	const [saving, setSaving] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState(null);
+	const [pendingOverwrite, setPendingOverwrite] = useState(null);
 
 	useEffect(() => {
 		setError(null);
+		setPendingOverwrite(null);
 	}, [editing]);
 
 	const loadPrices = useCallback(async () => {
@@ -170,6 +172,14 @@ function PricingSettings() {
 	}, [loadPrices]);
 
 	const handleSave = async (data) => {
+		if (!editing._id) {
+			const existingPrice = prices.find((p) => p.name === data.name);
+			if (existingPrice) {
+				setPendingOverwrite({ existingPrice, data });
+				return;
+			}
+		}
+
 		setSaving(true);
 		setError(null);
 		try {
@@ -181,6 +191,25 @@ function PricingSettings() {
 				setEditing(null);
 			} else {
 				setError(result.message || "Failed to save price.");
+			}
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const handleConfirmOverwrite = async () => {
+		if (!pendingOverwrite) return;
+		const { existingPrice, data } = pendingOverwrite;
+		setPendingOverwrite(null);
+		setSaving(true);
+		setError(null);
+		try {
+			const result = await window.electronAPI.updatePrice(existingPrice._id, data);
+			if (result.success) {
+				await loadPrices();
+				setEditing(null);
+			} else {
+				setError(result.message || "Failed to overwrite price.");
 			}
 		} finally {
 			setSaving(false);
@@ -273,6 +302,18 @@ function PricingSettings() {
 					danger
 					onConfirm={() => handleDelete(confirmDelete)}
 					onCancel={() => setConfirmDelete(null)}
+				/>,
+				document.body
+			)}
+
+			{pendingOverwrite && createPortal(
+				<ConfirmDialog
+					title="Overwrite Pricing"
+					message={`A pricing structure for "${pendingOverwrite.existingPrice.name}" already exists. Overwrite the existing price with this new rate?`}
+					confirmLabel="Overwrite Pricing"
+					cancelLabel="Cancel"
+					onConfirm={handleConfirmOverwrite}
+					onCancel={() => setPendingOverwrite(null)}
 				/>,
 				document.body
 			)}
