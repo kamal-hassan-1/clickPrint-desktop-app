@@ -82,6 +82,7 @@ function PriceForm({ price, error, saving, onSave, onCancel }) {
 
 	// Conventional name derived from the keys, used as a default if left blank.
 	const suggestedName = `${pageType}-${colored ? "CL" : "BW"}-${sidedness ? "DS" : "SS"}`;
+	const isSubmitDisabled = saving || rate === "" || isNaN(Number(rate)) || Number(rate) < 1 || Number(rate) > 50;
 
 	const submit = (e) => {
 		e.preventDefault();
@@ -114,7 +115,7 @@ function PriceForm({ price, error, saving, onSave, onCancel }) {
 					onChange={(e) => setRate(e.target.value)}
 					required
 				/>
-				<span className="form-hint">Enter a rate between Rs. 1 and Rs. 50 per page.</span>
+				{isSubmitDisabled && <span className="form-hint">Enter a rate between Rs. 1 and Rs. 50 per page.</span>}
 			</div>
 
 			<div className="form-field">
@@ -157,7 +158,7 @@ function PriceForm({ price, error, saving, onSave, onCancel }) {
 				<button
 					type="submit"
 					className="btn-gradient"
-					disabled={saving || rate === "" || isNaN(Number(rate)) || Number(rate) < 1 || Number(rate) > 50}
+					disabled={isSubmitDisabled}
 				>
 					{saving ? "Saving…" : isNew ? "Create Price" : "Save Changes"}
 				</button>
