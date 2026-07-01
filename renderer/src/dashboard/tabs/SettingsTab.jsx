@@ -12,33 +12,35 @@ const SECTIONS = [
 	{ id: "pricing", label: "Pricing", description: "Print rates by paper, color & sides" },
 ];
 
-// Two-state segmented toggle.
 function Segmented({ options, value, onChange }) {
 	return (
 		<div className="segmented">
-			{options.map((opt) => (
-				<button
-					key={String(opt.value)}
-					type="button"
-					className={`segmented__btn ${value === opt.value ? "segmented__btn--active" : ""}`}
-					onClick={() => onChange(opt.value)}
-				>
-					{opt.label}
-				</button>
-			))}
+			{options.map((opt) => {
+				const isActive = value === opt.value;
+				const activeClass = opt.activeClass || "segmented__btn--active";
+				return (
+					<button
+						key={String(opt.value)}
+						type="button"
+						className={`segmented__btn ${isActive ? activeClass : ""}`}
+						onClick={() => onChange(opt.value)}
+					>
+						{opt.label}
+					</button>
+				);
+			})}
 		</div>
 	);
 }
 
 // Create / edit form for a single price, shown inside a modal. Remounted (keyed)
 // per selection so the fields reset cleanly.
-function PriceForm({ price, saving, onSave, onCancel, onDelete }) {
+function PriceForm({ price, error, saving, onSave, onCancel, onDelete }) {
 	const isNew = !price._id;
 	const [rate, setRate] = useState(price.rate ?? "");
 	const [colored, setColored] = useState(price.keys?.colored ?? false);
 	const [pageType, setPageType] = useState(price.keys?.pageType || "A4");
 	const [sidedness, setSidedness] = useState(price.keys?.sidedness ?? false);
-	const [name, setName] = useState(price.name || "");
 
 	// Conventional name derived from the keys, used as a default if left blank.
 	const suggestedName = `${pageType}-${colored ? "CL" : "BW"}-${sidedness ? "DS" : "SS"}`;
@@ -46,7 +48,7 @@ function PriceForm({ price, saving, onSave, onCancel, onDelete }) {
 	const submit = (e) => {
 		e.preventDefault();
 		onSave({
-			name: name.trim() || suggestedName,
+			name: suggestedName,
 			rate: Number(rate) || 0,
 			keys: { colored, pageType, sidedness },
 		});
@@ -56,15 +58,10 @@ function PriceForm({ price, saving, onSave, onCancel, onDelete }) {
 		<form className="price-form" onSubmit={submit}>
 			<h3 className="modal-title">{isNew ? "New Price" : "Edit Price"}</h3>
 
+			{error && <div className="form-error">{error}</div>}
+
 			<div className="form-field">
-				<label className="form-label">Name</label>
-				<input
-					className="form-input"
-					value={name}
-					placeholder={suggestedName}
-					onChange={(e) => setName(e.target.value)}
-				/>
-				<span className="form-hint">Leave blank to use “{suggestedName}”.</span>
+				<label className="form-label" style={{marginBottom:"1.5rem"}}>Name: {suggestedName}</label>
 			</div>
 
 			<div className="form-field">
@@ -72,10 +69,11 @@ function PriceForm({ price, saving, onSave, onCancel, onDelete }) {
 				<input
 					className="form-input"
 					type="number"
-					min="0"
-					step="0.5"
+					min="1"
+					max="50"
+					step="1"
 					value={rate}
-					placeholder="0"
+					placeholder="1"
 					onChange={(e) => setRate(e.target.value)}
 					required
 				/>
@@ -87,8 +85,8 @@ function PriceForm({ price, saving, onSave, onCancel, onDelete }) {
 					value={colored}
 					onChange={setColored}
 					options={[
-						{ label: "Black & White", value: false },
-						{ label: "Color", value: true },
+						{ label: "Black & White", value: false, activeClass: "segmented__btn--active" },
+						{ label: "Color", value: true, activeClass: "segmented__btn--colorful" },
 					]}
 				/>
 			</div>
@@ -103,13 +101,13 @@ function PriceForm({ price, saving, onSave, onCancel, onDelete }) {
 			</div>
 
 			<div className="form-field">
-				<label className="form-label">Sides</label>
+				<label className="form-label">Sidedness</label>
 				<Segmented
 					value={sidedness}
 					onChange={setSidedness}
 					options={[
-						{ label: "Single-sided", value: false },
-						{ label: "Double-sided", value: true },
+						{ label: "Single", value: false },
+						{ label: "Double", value: true },
 					]}
 				/>
 			</div>
@@ -147,6 +145,10 @@ function PricingSettings() {
 	const [editing, setEditing] = useState(null); // price object, { keys: {} } for new, or null
 	const [saving, setSaving] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState(null);
+
+	useEffect(() => {
+		setError(null);
+	}, [editing]);
 
 	const loadPrices = useCallback(async () => {
 		setLoading(true);
@@ -214,7 +216,7 @@ function PricingSettings() {
 				</button>
 			</div>
 
-			{error && <div className="form-error">{error}</div>}
+			{error && !editing && <div className="form-error">{error}</div>}
 
 			{loading ? (
 				<div className="db-coming-soon">
@@ -251,6 +253,7 @@ function PricingSettings() {
 						<PriceForm
 							key={editing._id || "new"}
 							price={editing}
+							error={error}
 							saving={saving}
 							onSave={handleSave}
 							onCancel={() => setEditing(null)}

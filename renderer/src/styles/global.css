@@ -2016,6 +2016,12 @@ body,
 }
 
 .segmented__btn--active {
+	border-color: var(--color-text-primary);
+	background: rgba(143, 155, 179, 0.15);
+	color: var(--color-text-primary);
+}
+
+.segmented__btn--colorful {
 	border-color: var(--color-primary);
 	background: rgba(0, 230, 173, 0.1);
 	color: var(--color-primary);
