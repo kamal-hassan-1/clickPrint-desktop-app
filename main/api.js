@@ -286,6 +286,29 @@ async function updateShop(shopId, data) {
 	}
 }
 
+async function pingShopStatus(shopId){
+	try {
+		const response = await fetch(`${API_BASE_URL}/api/shops/${shopId}/isOnline`, {
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${getAuth().token}`,
+			}
+		});
+		return await response.json();
+	} 
+	catch (error) {
+		console.error("[API] pingShopStatus error:", error);
+		return {
+			success: false,
+			message:
+				error.message === "fetch failed"
+					? "Network error. Please check your internet connection."
+					: "An unexpected error occurred. Please try again.",
+		};
+	}
+}
+
 let _sse = null;
 let _sseTimer = null;
 let _onJobsUpdate = null;
@@ -329,6 +352,19 @@ function _connectSse() {
 	_sse.addEventListener("jobsUpdate", (event) => {
 		console.log("[SSE] jobsUpdate:", event.data);
 		_reconcile();
+	});
+
+	_sse.addEventListener("ping", async () => {
+		console.log("[SSE] ping");
+		const shopId = getShopId();
+		if (shopId) {
+			const result = await pingShopStatus(shopId);
+			if (result.success) {
+				console.log("[SSE] ping successful");
+			} else {
+				console.error("[SSE] ping failed:", result.message);
+			}
+		}
 	});
 
 	_sse.onerror = (err) => {
