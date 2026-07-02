@@ -5,7 +5,7 @@ import ListColumn from "../components/ListColumn";
 import WelcomePane from "../components/WelcomePane";
 import JobDetailCard from "../components/JobDetailCard";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { CheckIcon, TrashIcon, SearchIcon } from "../icons";
+import { CheckIcon, TrashIcon, SearchIcon, PrinterIcon } from "../icons";
 
 // Print Jobs tab: active job queue list on the left, job details on the right.
 // Each file can be previewed in the OS viewer or printed silently with its own
@@ -22,6 +22,12 @@ function PrintJobsTab() {
 
 	// Phone-number search query.
 	const [query, setQuery] = useState("");
+
+	// Per-file print progress, kept in React state: { [jobId]: { [fileId]: true } }.
+	const [printedFiles, setPrintedFiles] = useState({});
+
+	// Jobs with an in-flight "Print all" batch: { [jobId]: true }.
+	const [printingJob, setPrintingJob] = useState({});
 
 	// Oldest job first, so #1 is the next one up in the queue. The top (oldest)
 	// job gets a special dashed highlight below.
@@ -107,27 +113,101 @@ function PrintJobsTab() {
 		}
 	};
 
-	// Silently prints a file with its own settings (page size, range, color,
-	// copies, duplex) to the default printer, then moves the job to "printing" on
-	// the backend. Status only changes if the print succeeds. Errors are logged.
-	const handlePrintFile = async (file) => {
-		const job = selectedEntry;
-		if (!job) return;
+	// ── Printing ────────────────────────────────────────────────────────────────
 
-		try {
-			const result = await window.electronAPI.printFile(file.fileId, file.settings);
-			if (!result?.success) throw new Error(result?.message || "print failed");
-		} catch (err) {
-			console.error("[Renderer] failed to print file:", err);
-			return;
-		}
+	const isFilePrinted = (jobId, fileId) => !!printedFiles[jobId]?.[fileId];
 
+	const markFilePrinted = (jobId, fileId) => {
+		setPrintedFiles((prev) => ({
+			...prev,
+			[jobId]: { ...(prev[jobId] || {}), [fileId]: true },
+		}));
+	};
+
+	// Moves the job to "printing" on the backend once (optimistic + PATCH). A
+	// no-op if it's already there. Errors are logged, never surfaced.
+	const ensurePrintingStatus = async (job) => {
+		if (job.rawStatus === "printing") return;
 		applyStatus(job._id, "processing", "printing");
 		try {
 			const result = await window.electronAPI.updateJobStatus(job._id, "printing");
 			if (!result?.success) throw new Error(result?.message || "request failed");
 		} catch (err) {
 			console.error("[Renderer] failed to set job printing:", err);
+		}
+	};
+
+	// Silently sends one file to the printer queue with its own settings. Returns
+	// true on success, false on failure (logged, not shown).
+	const printOneFile = async (file) => {
+		try {
+			const result = await window.electronAPI.printFile(file.fileId, file.settings);
+			if (!result?.success) throw new Error(result?.message || "print failed");
+			return true;
+		} catch (err) {
+			console.error("[Renderer] failed to print file:", err);
+			return false;
+		}
+	};
+
+	// Marks the job complete on the backend and drops it from the active list.
+	const completeJob = async (job) => {
+		const revert = applyStatus(job._id, "completed", "completed");
+		setSelectedEntry((prev) => (prev?._id === job._id ? null : prev));
+		try {
+			const result = await window.electronAPI.updateJobStatus(job._id, "completed");
+			if (!result?.success) throw new Error(result?.message || "request failed");
+		} catch (err) {
+			console.error("[Renderer] failed to complete job:", err);
+			revert();
+		}
+	};
+
+	// Manual single-file print. Marks the file printed on success and, if it was
+	// the last remaining document, completes the whole job.
+	const handlePrintFile = async (file) => {
+		const job = selectedEntry;
+		if (!job || printingJob[job._id] || isFilePrinted(job._id, file.fileId)) return;
+
+		await ensurePrintingStatus(job);
+		const ok = await printOneFile(file);
+		if (!ok) return;
+
+		markFilePrinted(job._id, file.fileId);
+		const printedForJob = { ...(printedFiles[job._id] || {}), [file.fileId]: true };
+		const files = job.files || [];
+		if (files.length && files.every((f) => printedForJob[f.fileId])) {
+			await completeJob(job);
+		}
+	};
+
+	// "Print all": PATCH printing, then silently queue every not-yet-printed doc,
+	// marking each as it prints. A failed doc is skipped so the rest proceed. If
+	// every doc ends up printed, PATCH completed and drop the job.
+	const handlePrintAll = async () => {
+		const job = selectedEntry;
+		if (!job || printingJob[job._id]) return;
+
+		setPrintingJob((prev) => ({ ...prev, [job._id]: true }));
+		await ensurePrintingStatus(job);
+
+		const files = job.files || [];
+		const printedForJob = { ...(printedFiles[job._id] || {}) };
+		const remaining = files.filter((f) => !printedForJob[f.fileId]);
+
+		for (const file of remaining) {
+			const ok = await printOneFile(file);
+			if (ok) {
+				printedForJob[file.fileId] = true;
+				markFilePrinted(job._id, file.fileId);
+			}
+			// Failed doc: skip it and carry on with the rest.
+		}
+
+		setPrintingJob((prev) => ({ ...prev, [job._id]: false }));
+
+		if (files.length && files.every((f) => printedForJob[f.fileId])) {
+			await completeJob(job);
 		}
 	};
 
@@ -192,33 +272,60 @@ function PrintJobsTab() {
 			</ListColumn>
 
 			<div className="db-detail">
-				{selectedEntry ? (
-					<JobDetailCard
-						entry={selectedEntry}
-						onPreviewFile={handlePreviewFile}
-						onPrintFile={handlePrintFile}
-						headerActions={
-							selectedEntry.status !== "completed" ? (
-								<>
-									<button
-										className="btn-outline btn-outline-danger"
-										onClick={() => setPendingCancel(selectedEntry)}
-									>
-										<TrashIcon />
-										Decline Job
-									</button>
-									<button
-										className="btn-gradient"
-										onClick={() => setPendingComplete(selectedEntry)}
-									>
-										<CheckIcon />
-										Mark as Complete
-									</button>
-								</>
-							) : null
-						}
-					/>
-				) : (
+				{selectedEntry ? (() => {
+					const jobPrinted = printedFiles[selectedEntry._id] || {};
+					const isPrintingAll = !!printingJob[selectedEntry._id];
+					const remainingCount = (selectedEntry.files || []).filter((f) => !jobPrinted[f.fileId]).length;
+
+					return (
+						<JobDetailCard
+							entry={selectedEntry}
+							onPreviewFile={handlePreviewFile}
+							onPrintFile={handlePrintFile}
+							printedFileIds={jobPrinted}
+							printingAll={isPrintingAll}
+							headerActions={
+								selectedEntry.status !== "completed" ? (
+									<>
+										<button
+											className="btn-outline btn-outline-danger"
+											onClick={() => setPendingCancel(selectedEntry)}
+											disabled={isPrintingAll}
+										>
+											<TrashIcon />
+											Decline Job
+										</button>
+										<button
+											className="btn-outline"
+											onClick={() => setPendingComplete(selectedEntry)}
+											disabled={isPrintingAll}
+										>
+											<CheckIcon />
+											Mark as Complete
+										</button>
+										<button
+											className="btn-gradient"
+											onClick={handlePrintAll}
+											disabled={isPrintingAll || remainingCount === 0}
+										>
+											{isPrintingAll ? (
+												<>
+													<div className="spinner spinner--dark" style={{ borderTopColor: "#111b21", width: "14px", height: "14px" }} />
+													Printing…
+												</>
+											) : (
+												<>
+													<PrinterIcon />
+													Print ({remainingCount} {remainingCount === 1 ? "doc" : "docs"})
+												</>
+											)}
+										</button>
+									</>
+								) : null
+							}
+						/>
+					);
+				})() : (
 					<WelcomePane />
 				)}
 			</div>

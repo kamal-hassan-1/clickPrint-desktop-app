@@ -1623,6 +1623,30 @@ body,
 	white-space: nowrap;
 }
 
+/* "Printed" badge shown on a file once it has been sent to the printer. */
+.file-preview__badge {
+	flex-shrink: 0;
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	border-radius: var(--radius-pill);
+	font-size: 10.5px;
+	font-weight: 700;
+	color: var(--color-primary);
+	background: rgba(0, 230, 173, 0.12);
+}
+
+.file-preview__badge svg {
+	width: 12px;
+	height: 12px;
+}
+
+.file-preview--printed {
+	border-color: var(--color-primary);
+}
+
 .file-preview__content {
 	display: flex;
 	gap: 18px;

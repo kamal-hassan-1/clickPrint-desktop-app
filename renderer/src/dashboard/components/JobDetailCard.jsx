@@ -1,4 +1,4 @@
-import { PdfGlyph, UserGlyph, PrinterIcon, EyeIcon } from "../icons";
+import { PdfGlyph, UserGlyph, PrinterIcon, EyeIcon, CheckIcon } from "../icons";
 import { useFiles } from "../FilesContext";
 
 function sidednessLabel(value) {
@@ -27,9 +27,6 @@ function fileSettingRows(settings = {}) {
 		{ label: "Copies", value: `${settings.numberOfCopies || 1}×` },
 	].filter((row) => row.value != null && row.value !== "");
 }
-
-// ── File preview ──────────────────────────────────────────────────────────────
-// Previews are placeholders for now — every uploaded file is treated as a PDF.
 
 function FileThumb({ file }) {
 	const { fileStatus, fileUrl } = useFiles();
@@ -66,13 +63,19 @@ function FileThumb({ file }) {
 	);
 }
 
-function FilePreview({ file, index, onPreview, onPrint, showPreview }) {
+function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, printingAll }) {
 	const settings = file.settings || {};
 	return (
-		<div className="file-preview">
+		<div className={`file-preview ${printed ? "file-preview--printed" : ""}`}>
 			<div className="file-preview__heading">
 				<span className="file-preview__index">{index + 1}</span>
 				<span className="file-preview__name" title={file.name}>{file.name}</span>
+				{printed && (
+					<span className="file-preview__badge">
+						<CheckIcon />
+						Printed
+					</span>
+				)}
 			</div>
 			<div className="file-preview__content">
 				{showPreview && <FileThumb file={file} />}
@@ -96,9 +99,22 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview }) {
 						</button>
 					)}
 					{onPrint && (
-						<button className="btn-gradient btn-sm" onClick={() => onPrint(file)}>
-							<PrinterIcon />
-							Print
+						<button
+							className="btn-gradient btn-sm"
+							onClick={() => onPrint(file)}
+							disabled={printed || printingAll}
+						>
+							{printed ? (
+								<>
+									<CheckIcon />
+									Printed
+								</>
+							) : (
+								<>
+									<PrinterIcon />
+									Print
+								</>
+							)}
 						</button>
 					)}
 				</div>
@@ -117,7 +133,7 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview }) {
 // `headerActions` is an optional node (decline / mark-complete buttons) rendered
 // beside the title. Per-file preview/print handlers, when provided, render
 // action buttons under each file.
-function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true }) {
+function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true, printedFileIds, printingAll }) {
 	const files = entry.files || [];
 	const cost = entry.cost;
 
@@ -226,6 +242,8 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 								onPreview={onPreviewFile}
 								onPrint={onPrintFile}
 								showPreview={showPreview}
+								printed={!!printedFileIds?.[file.fileId]}
+								printingAll={printingAll}
 							/>
 						))}
 					</div>
