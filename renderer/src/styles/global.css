@@ -1,8 +1,3 @@
-/* ============================================================
-   ClickPrint Desktop — Global Styles
-   Color palette inspired by the mobile client app
-   ============================================================ */
-
 :root {
 	/* Primary palette */
 	--color-primary: #00d9a3;
@@ -843,75 +838,21 @@ body,
 
 /* ── Dashboard content header ── */
 
-.db-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0 20px;
-	height: 52px;
-	background: var(--color-bg-card);
-	border-bottom: 1px solid var(--border-light);
-	flex-shrink: 0;
-}
 
-.db-header__shop {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
 
-.db-shop-name {
-	font-size: 15px;
-	font-weight: 700;
-	color: var(--color-text-primary);
-}
 
-.db-edit-btn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 26px;
-	height: 26px;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color-text-secondary);
-	border-radius: var(--radius-sm);
-	transition: all var(--transition-fast);
-}
 
 .db-edit-btn:hover {
 	color: var(--color-primary);
 	background: rgba(0, 217, 163, 0.12);
 }
 
-.db-header__right {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-}
 
-.db-greeting {
-	font-size: 14px;
-	color: var(--color-text-secondary);
-}
 
 .db-greeting strong {
 	color: var(--color-text-primary);
 }
 
-.db-logout-btn {
-	font-size: 12px;
-	font-weight: 600;
-	color: var(--color-text-secondary);
-	background: none;
-	border: 1.5px solid var(--border-light);
-	border-radius: var(--radius-sm);
-	padding: 4px 12px;
-	cursor: pointer;
-	font-family: var(--font-family);
-	transition: all var(--transition-fast);
-}
 
 .db-logout-btn:hover {
 	color: var(--color-accent);
@@ -1073,9 +1014,6 @@ body,
 	justify-content: center;
 }
 
-.db-tab__label {
-	display: none; /* Hide labels to match WhatsApp Web clean sidebar layout */
-}
 
 /* ── Middle list panel (WhatsApp style chat list) ── */
 
@@ -1088,9 +1026,6 @@ body,
 	flex-shrink: 0;
 }
 
-.db-list--visible {
-	width: 320px;
-}
 
 .db-list__header {
 	display: flex;
@@ -1123,39 +1058,9 @@ body,
 }
 
 /* WhatsApp search bar */
-.db-search-wrapper {
-	position: relative;
-	width: 100%;
-}
 
-.db-search-input-container {
-	position: relative;
-	display: flex;
-	align-items: center;
-	width: 100%;
-}
 
-.db-search-icon {
-	position: absolute;
-	left: 12px;
-	color: var(--color-text-muted);
-	display: flex;
-	align-items: center;
-	pointer-events: none;
-}
 
-.db-search-input {
-	width: 100%;
-	height: 35px;
-	background: var(--color-bg-input);
-	border: none;
-	border-radius: 8px;
-	padding: 0 16px 0 38px;
-	font-size: 13px;
-	color: var(--color-text-primary);
-	outline: none;
-	transition: all var(--transition-fast);
-}
 
 .db-search-input:focus {
 	background: var(--color-bg-input-focus);
@@ -1396,9 +1301,6 @@ body,
 	font-size: 13px;
 }
 
-.db-coming-soon__icon {
-	font-size: 30px;
-}
 
 /* ── Right detail panel (WhatsApp main chat area + Sadapay premium receipts/widgets) ── */
 
@@ -1500,20 +1402,7 @@ body,
 }
 
 /* Sadapay receipt card for print job */
-.receipt-card {
-	background: var(--color-bg-card); /* #202c33 in dark mode */
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--border-light);
-	box-shadow: var(--shadow-md);
-	overflow: hidden;
-	margin-bottom: 24px;
-}
 
-.receipt-header {
-	padding: 24px;
-	border-bottom: 1px dashed var(--border-light);
-	position: relative;
-}
 
 /* Half-circle punch cuts at the border of receipt card for ticket aesthetic */
 .receipt-header::before,
@@ -1548,12 +1437,6 @@ body,
 	color: var(--color-text-secondary);
 }
 
-.receipt-body {
-	padding: 24px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-}
 
 .receipt-row {
 	display: flex;
@@ -1694,13 +1577,6 @@ body,
 	gap: 12px;
 }
 
-.detail-tile__footer {
-	flex-shrink: 0;
-	display: flex;
-	gap: 12px;
-	padding: 14px 18px;
-	border-top: 1px dashed var(--border-light);
-}
 
 /* ── File previews (right column) ── */
 
@@ -2157,40 +2033,10 @@ body,
 	margin-bottom: 24px;
 }
 
-.toner-widget {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
 
-.toner-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--color-text-secondary);
-}
 
-.toner-percentage {
-	color: var(--color-primary);
-	font-weight: 700;
-}
 
-.toner-bar {
-	height: 8px;
-	background: var(--color-bg-input);
-	border-radius: var(--radius-pill);
-	overflow: hidden;
-	width: 100%;
-}
 
-.toner-bar-fill {
-	height: 100%;
-	border-radius: var(--radius-pill);
-	background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
-	transition: width var(--transition-slow);
-}
 
 .printer-grid {
 	display: grid;
@@ -2233,96 +2079,24 @@ body,
 }
 
 /* Settings Form elements directly inside Details Panel */
-.settings-panel-card {
-	background: var(--color-bg-card);
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--border-light);
-	padding: 24px;
-	box-shadow: var(--shadow-sm);
-	margin-bottom: 24px;
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-}
 
-.settings-group {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
 
-.settings-label {
-	font-size: 11px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	color: var(--color-text-secondary);
-}
 
-.settings-input {
-	height: 42px;
-	width: 100%;
-	background: var(--color-bg-input);
-	border: 1.5px solid transparent;
-	border-radius: var(--radius-md);
-	padding: 0 14px;
-	font-size: 13.5px;
-	color: var(--color-text-primary);
-	font-family: var(--font-family);
-	outline: none;
-	transition: all var(--transition-fast);
-}
 
 .settings-input:focus {
 	border-color: var(--color-primary);
 	background: var(--color-bg-input-focus);
 }
 
-.settings-caps-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-	gap: 10px;
-	margin-top: 4px;
-}
 
-.settings-cap-btn {
-	height: 38px;
-	border: 1.5px solid var(--border-light);
-	border-radius: var(--radius-pill);
-	background: transparent;
-	font-size: 12.5px;
-	color: var(--color-text-secondary);
-	cursor: pointer;
-	font-weight: 500;
-	transition: all var(--transition-fast);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
 
 .settings-cap-btn:hover {
 	border-color: var(--color-primary);
 	color: var(--color-primary);
 }
 
-.settings-cap-btn--active {
-	border-color: var(--color-primary);
-	background: rgba(0, 230, 173, 0.1);
-	color: var(--color-primary);
-	font-weight: 600;
-}
 
-.settings-rates-grid {
-	display: grid;
-	grid-template-columns: repeat(2, 1fr);
-	gap: 16px;
-}
 
-.settings-rate-item {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
 
 /* Status Pills */
 .db-status {
@@ -2343,74 +2117,15 @@ body,
 
 /* ── Footer ── */
 
-.db-footer {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0 20px;
-	height: 38px;
-	border-top: 1px solid var(--border-light);
-	background: var(--color-bg-card);
-	font-size: 12px;
-	color: var(--color-text-secondary);
-	flex-shrink: 0;
-}
 
-.db-footer__brand {
-	font-weight: 700;
-	color: var(--color-text-muted);
-}
 
 /* ── Edit shop modal (centered) ── */
 
-.modal-overlay--center {
-	align-items: center;
-}
 
-.edit-modal {
-	background: var(--color-bg-card);
-	border-radius: var(--radius-lg);
-	padding: 28px 28px 24px;
-	width: 460px;
-	max-width: 90vw;
-	animation: popIn 280ms cubic-bezier(0.16, 1, 0.3, 1);
-}
 
-.edit-modal__title {
-	font-size: 17px;
-	font-weight: 700;
-	color: var(--color-text-primary);
-	margin-bottom: 20px;
-}
 
-.edit-field {
-	margin-bottom: 16px;
-}
 
-.edit-field__label {
-	display: block;
-	font-size: 11px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	color: var(--color-text-secondary);
-	margin-bottom: 6px;
-}
 
-.edit-field__input {
-	width: 100%;
-	height: 42px;
-	border: 2px solid var(--border-light);
-	border-radius: var(--radius-md);
-	background: var(--color-bg-input);
-	padding: 0 14px;
-	font-size: 14px;
-	font-weight: 500;
-	color: var(--color-text-primary);
-	font-family: var(--font-family);
-	transition: all var(--transition-fast);
-	outline: none;
-}
 
 .edit-field__input:focus {
 	border-color: var(--color-primary);
@@ -2418,48 +2133,15 @@ body,
 	box-shadow: 0 0 0 3px rgba(0, 217, 163, 0.1);
 }
 
-.capability-tags {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
 
-.capability-tag {
-	padding: 5px 13px;
-	border: 1.5px solid var(--border-light);
-	border-radius: var(--radius-pill);
-	background: none;
-	font-size: 12px;
-	font-weight: 500;
-	color: var(--color-text-secondary);
-	cursor: pointer;
-	font-family: var(--font-family);
-	transition: all var(--transition-fast);
-}
 
 .capability-tag:hover {
 	border-color: var(--color-primary);
 	color: var(--color-primary);
 }
 
-.capability-tag--active {
-	border-color: var(--color-primary);
-	background: rgba(0, 217, 163, 0.1);
-	color: var(--color-primary);
-	font-weight: 600;
-}
 
-.edit-modal__error {
-	font-size: 13px;
-	color: var(--color-accent);
-	margin-bottom: 12px;
-}
 
-.edit-modal__actions {
-	display: flex;
-	gap: 10px;
-	margin-top: 20px;
-}
 
 .edit-modal__actions .modal-btn--cancel,
 .edit-modal__actions .modal-btn--retry {
@@ -2936,4 +2618,155 @@ body,
 
 @media (max-width: 1080px) {
 	.dash__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ============================================================
+   Login Screen — Full-screen layout with centred content column
+   ============================================================ */
+
+
+/* Decorative ambient blobs */
+
+
+
+/* Inner column — centres content, caps its width */
+
+/* Brand row */
+
+
+/* Error message */
+
+/* Subtle hint below the button */
+
+/* ============================================================
+   Logout Tab — Centered Card Layout
+   ============================================================ */
+
+.logout-tab {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	overflow: hidden;
+}
+
+/* Ambient accent glow behind the card */
+.logout-tab__glow {
+	position: absolute;
+	width: 320px;
+	height: 320px;
+	border-radius: 50%;
+	background: radial-gradient(circle, rgba(255, 79, 0, 0.12) 0%, transparent 70%);
+	pointer-events: none;
+	filter: blur(40px);
+}
+
+.logout-tab__card {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 400px;
+	background: var(--color-bg-card);
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-xl);
+	box-shadow: var(--shadow-lg);
+	padding: 36px 32px 28px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	animation: fadeSlideIn var(--transition-slow) both;
+}
+
+/* Icon wrapper — accent-tinted circle */
+.logout-tab__icon-wrap {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	background: rgba(255, 79, 0, 0.08);
+	border: 1.5px solid rgba(255, 79, 0, 0.18);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-accent);
+	margin-bottom: 20px;
+	box-shadow: 0 0 24px rgba(255, 79, 0, 0.12);
+	transition: box-shadow var(--transition-base);
+}
+
+.logout-tab__card:hover .logout-tab__icon-wrap {
+	box-shadow: 0 0 36px rgba(255, 79, 0, 0.22);
+}
+
+.logout-tab__title {
+	font-size: 20px;
+	font-weight: 800;
+	color: var(--color-text-primary);
+	letter-spacing: -0.3px;
+	margin-bottom: 10px;
+	line-height: 1.2;
+}
+
+.logout-tab__body {
+	font-size: 13.5px;
+	color: var(--color-text-secondary);
+	line-height: 1.6;
+	margin-bottom: 20px;
+	max-width: 300px;
+}
+
+/* Info pill */
+.logout-tab__info-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	font-weight: 600;
+	color: var(--color-primary);
+	background: rgba(0, 217, 163, 0.08);
+	border: 1px solid rgba(0, 217, 163, 0.2);
+	padding: 6px 12px;
+	border-radius: var(--radius-pill);
+	margin-bottom: 28px;
+}
+
+/* Action buttons row */
+.logout-tab__actions {
+	display: flex;
+	gap: 10px;
+	width: 100%;
+}
+
+.logout-tab__btn-cancel {
+	flex: 1;
+	padding: 11px 20px;
+	font-size: 13.5px;
+}
+
+.logout-tab__btn-confirm {
+	flex: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	padding: 12px 20px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+	color: #ffffff;
+	font-size: 13.5px;
+	font-weight: 700;
+	font-family: var(--font-family);
+	cursor: pointer;
+	box-shadow: var(--shadow-accent);
+	transition: all var(--transition-base);
+}
+
+.logout-tab__btn-confirm:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 24px rgba(255, 79, 0, 0.35);
+}
+
+.logout-tab__btn-confirm:active {
+	transform: translateY(0);
 }
