@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useJobs } from "../JobsContext";
 import { ACTIVE_STATUSES } from "../jobUtils";
 import ListColumn from "../components/ListColumn";
@@ -6,6 +6,19 @@ import WelcomePane from "../components/WelcomePane";
 import JobDetailCard from "../components/JobDetailCard";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { CheckIcon, TrashIcon, SearchIcon, PrinterIcon } from "../icons";
+
+// Per-file print progress is persisted here so it survives a reload. Entries are
+// pruned as soon as their job reaches a terminal state (completed/declined) so
+// the map never accumulates dead jobs.
+const PRINTED_STORAGE_KEY = "clickprint:printedFiles";
+
+function loadPrintedFiles() {
+	try {
+		return JSON.parse(localStorage.getItem(PRINTED_STORAGE_KEY)) || {};
+	} catch {
+		return {};
+	}
+}
 
 // Print Jobs tab: active job queue list on the left, job details on the right.
 // Each file can be previewed in the OS viewer or printed silently with its own
@@ -23,11 +36,21 @@ function PrintJobsTab() {
 	// Phone-number search query.
 	const [query, setQuery] = useState("");
 
-	// Per-file print progress, kept in React state: { [jobId]: { [fileId]: true } }.
-	const [printedFiles, setPrintedFiles] = useState({});
+	// Per-file print progress, kept in React state (and mirrored to localStorage):
+	// { [jobId]: { [fileId]: true } }.
+	const [printedFiles, setPrintedFiles] = useState(loadPrintedFiles);
 
 	// Jobs with an in-flight "Print all" batch: { [jobId]: true }.
 	const [printingJob, setPrintingJob] = useState({});
+
+	// Mirror print progress to localStorage on every change so a reload keeps it.
+	useEffect(() => {
+		try {
+			localStorage.setItem(PRINTED_STORAGE_KEY, JSON.stringify(printedFiles));
+		} catch (err) {
+			console.warn("[Renderer] failed to persist print progress:", err.message);
+		}
+	}, [printedFiles]);
 
 	// Oldest job first, so #1 is the next one up in the queue. The top (oldest)
 	// job gets a special dashed highlight below.
@@ -79,6 +102,7 @@ function PrintJobsTab() {
 		try {
 			const result = await window.electronAPI.updateJobStatus(job._id, "cancelled");
 			if (!result?.success) throw new Error(result?.message || "request failed");
+			clearJobPrinted(job._id);
 		} catch (err) {
 			console.error("[Renderer] failed to cancel job:", err);
 			revert();
@@ -97,6 +121,7 @@ function PrintJobsTab() {
 		try {
 			const result = await window.electronAPI.updateJobStatus(job._id, "completed");
 			if (!result?.success) throw new Error(result?.message || "request failed");
+			clearJobPrinted(job._id);
 		} catch (err) {
 			console.error("[Renderer] failed to mark job complete:", err);
 			revert();
@@ -122,6 +147,17 @@ function PrintJobsTab() {
 			...prev,
 			[jobId]: { ...(prev[jobId] || {}), [fileId]: true },
 		}));
+	};
+
+	// Drops a job's print progress from state (and thus from localStorage). Called
+	// once a job reaches a terminal state so persisted progress doesn't pile up.
+	const clearJobPrinted = (jobId) => {
+		setPrintedFiles((prev) => {
+			if (!prev[jobId]) return prev;
+			const next = { ...prev };
+			delete next[jobId];
+			return next;
+		});
 	};
 
 	// Moves the job to "printing" on the backend once (optimistic + PATCH). A
@@ -157,6 +193,7 @@ function PrintJobsTab() {
 		try {
 			const result = await window.electronAPI.updateJobStatus(job._id, "completed");
 			if (!result?.success) throw new Error(result?.message || "request failed");
+			clearJobPrinted(job._id);
 		} catch (err) {
 			console.error("[Renderer] failed to complete job:", err);
 			revert();
