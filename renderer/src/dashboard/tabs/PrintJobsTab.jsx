@@ -52,6 +52,26 @@ function PrintJobsTab() {
 		}
 	}, [printedFiles]);
 
+	// Reconcile persisted progress against the authoritative job list: drop print
+	// progress for any job the server no longer lists (e.g. removed/cancelled from
+	// another device). This is race-safe because our own optimistic status changes
+	// keep the job *in* printJobs (they map, never remove) — only a server-driven
+	// full-list replace drops it. The non-empty guard prevents a still-loading or
+	// failed initial fetch (both empty) from wiping in-progress state.
+	useEffect(() => {
+		if (printJobs.length === 0) return;
+		const present = new Set(printJobs.map((j) => j._id));
+		setPrintedFiles((prev) => {
+			let changed = false;
+			const next = {};
+			for (const jobId of Object.keys(prev)) {
+				if (present.has(jobId)) next[jobId] = prev[jobId];
+				else changed = true;
+			}
+			return changed ? next : prev;
+		});
+	}, [printJobs]);
+
 	// Oldest job first, so #1 is the next one up in the queue. The top (oldest)
 	// job gets a special dashed highlight below.
 	const entries = printJobs
