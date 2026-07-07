@@ -1511,6 +1511,7 @@ body,
 
 .job-detail__header-actions {
 	display: flex;
+	align-items: flex-start;
 	gap: 12px;
 	flex-shrink: 0;
 }
@@ -1708,6 +1709,181 @@ body,
 .file-preview__settings .receipt-label,
 .file-preview__settings .receipt-value {
 	font-size: 12.5px;
+}
+
+/* Prominent per-file page count, filling the space freed by moving the minor
+   settings into the pill below. */
+.file-preview__pages {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-bottom: 6px;
+	padding-bottom: 10px;
+	border-bottom: 1px dashed var(--border-light);
+}
+
+.file-preview__pages-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	color: var(--color-text-muted);
+}
+
+.file-preview__pages-value {
+	font-size: 26px;
+	font-weight: 800;
+	line-height: 1.1;
+	color: var(--color-text-primary);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Less-important settings, inline in a rounded container, sitting beside the
+   thumbnail below the primary setting rows. Slightly muted but still legible. */
+.file-preview__minor {
+	margin-top: 4px;
+	padding: 8px 12px;
+	border-radius: var(--radius-md);
+	background: rgba(134, 150, 160, 0.14);
+	font-size: 11.5px;
+	color: var(--color-text-secondary);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}
+
+.file-preview__minor-sep {
+	margin-right: 6px;
+	color: var(--color-text-muted);
+}
+
+/* ── Split print button (main action + printer dropdown) ── */
+.print-split {
+	position: relative;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 5px;
+}
+
+.print-split__row {
+	display: inline-flex;
+	align-items: stretch;
+}
+
+.print-split__main,
+.print-split__toggle {
+	background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+	color: #111b21;
+	border: none;
+	cursor: pointer;
+	font-family: var(--font-family);
+	font-weight: 700;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	box-shadow: var(--shadow-primary);
+	transition: filter var(--transition-base);
+}
+
+.print-split__main {
+	border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.print-split__toggle {
+	border-radius: 0 var(--radius-md) var(--radius-md) 0;
+	border-left: 1px solid rgba(17, 27, 33, 0.2);
+}
+
+.print-split--md .print-split__main { padding: 12px 20px; font-size: 14px; }
+.print-split--md .print-split__toggle { padding: 12px 9px; }
+.print-split--sm .print-split__main { padding: 8px 14px; font-size: 13px; }
+.print-split--sm .print-split__toggle { padding: 8px 7px; }
+
+.print-split__main:hover:not(:disabled),
+.print-split__toggle:hover:not(:disabled) {
+	filter: brightness(1.06);
+}
+
+.print-split__main:disabled,
+.print-split__toggle:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.print-split__info {
+	font-size: 11px;
+	color: var(--color-text-muted);
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Fill the per-file actions row like the sibling buttons. */
+.file-preview__actions .print-split { flex: 1; }
+.file-preview__actions .print-split__row { width: 100%; }
+.file-preview__actions .print-split__main { flex: 1; }
+
+.print-split__menu {
+	z-index: 1100;
+	min-width: 210px;
+	max-width: 320px;
+	max-height: 280px;
+	overflow-y: auto;
+	padding: 6px;
+	background: var(--color-bg-card);
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-lg);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	animation: fadeSlideIn var(--transition-base) both;
+}
+
+.print-split__menu-title {
+	font-size: 10.5px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	color: var(--color-text-muted);
+	padding: 6px 10px 4px;
+}
+
+.print-split__item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	width: 100%;
+	padding: 9px 10px;
+	border: none;
+	background: none;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	font-family: var(--font-family);
+	font-size: 13px;
+	color: var(--color-text-primary);
+	text-align: left;
+	transition: background var(--transition-fast);
+}
+
+.print-split__item:hover {
+	background: rgba(134, 150, 160, 0.12);
+}
+
+.print-split__item svg {
+	color: var(--color-primary);
+	flex-shrink: 0;
+}
+
+.print-split__item-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* ── Confirmation modal ── */

@@ -138,6 +138,12 @@ export const SearchIcon = () => (
 	</svg>
 );
 
+export const ChevronDownIcon = () => (
+	<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+		<polyline points="6 9 12 15 18 9" />
+	</svg>
+);
+
 export const EyeIcon = () => (
 	<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
 		<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />

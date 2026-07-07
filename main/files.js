@@ -158,10 +158,11 @@ function buildPrintOptions(settings = {}) {
 	return options;
 }
 
-// Loads a cached PDF into an offscreen window and prints it silently to the
-// default printer with the document's own settings applied. Resolves once the
+// Loads a cached PDF into an offscreen window and prints it silently to a
+// printer with the document's own settings applied. `deviceName`, when given,
+// overrides the operator's saved default for this one job. Resolves once the
 // print job is spooled; rejects if printing fails.
-async function printFile(fileId, settings) {
+async function printFile(fileId, settings, deviceName) {
 	await ensureFile(fileId);
 	if (!isReady(fileId)) throw new Error("file not ready");
 
@@ -173,10 +174,10 @@ async function printFile(fileId, settings) {
 		// Give the PDF plugin a moment to lay the document out before printing.
 		await new Promise((resolve) => setTimeout(resolve, 400));
 		const options = buildPrintOptions(settings);
-		// Route the job to the operator's chosen printer (falls back to the system
-		// default printer when none has been selected yet).
-		const chosen = store.get("selectedPrinter");
-		if (chosen?.name) options.deviceName = chosen.name;
+		// Route the job to the explicitly-requested printer, else the operator's
+		// saved choice, else the system default (no deviceName).
+		const target = deviceName || store.get("selectedPrinter")?.name;
+		if (target) options.deviceName = target;
 		console.log(`[Files] printing ${fileId} → ${options.deviceName || "default printer"}`, options);
 
 		// "Microsoft Print to PDF" reports success=false in the callback even when

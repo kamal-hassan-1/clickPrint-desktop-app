@@ -57,6 +57,22 @@ export function transformJob(job) {
 	};
 }
 
+// Total pages physically printed across a job's files (page count × copies).
+// Returns null when no file reports a page count (older data) so callers can
+// render a placeholder.
+export function getJobTotalPages(entry) {
+	const files = entry.files || [];
+	let total = 0;
+	let any = false;
+	for (const file of files) {
+		if (typeof file.numberOfPages === "number") {
+			total += file.numberOfPages * (file.settings?.numberOfCopies || 1);
+			any = true;
+		}
+	}
+	return any ? total : null;
+}
+
 export function getJobPrintMode(entry, isShort = false) {
 	const files = entry.files || [];
 	if (files.length === 0) {

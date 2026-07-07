@@ -5,6 +5,7 @@ import ListColumn from "../components/ListColumn";
 import WelcomePane from "../components/WelcomePane";
 import JobDetailCard from "../components/JobDetailCard";
 import ConfirmDialog from "../components/ConfirmDialog";
+import PrintSplitButton from "../components/PrintSplitButton";
 import { CheckIcon, TrashIcon, SearchIcon, PrinterIcon } from "../icons";
 
 // Per-file print progress is persisted here so it survives a reload. Entries are
@@ -42,6 +43,30 @@ function PrintJobsTab() {
 
 	// Jobs with an in-flight "Print all" batch: { [jobId]: true }.
 	const [printingJob, setPrintingJob] = useState({});
+
+	// Available printers + the operator's saved default, for the print dropdowns.
+	const [printers, setPrinters] = useState([]);
+	const [defaultPrinter, setDefaultPrinter] = useState(null);
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const [list, selected] = await Promise.all([
+					window.electronAPI.listPrinters(),
+					window.electronAPI.getSelectedPrinter(),
+				]);
+				if (cancelled) return;
+				if (list?.success) setPrinters(list.data || []);
+				setDefaultPrinter(selected || null);
+			} catch (err) {
+				console.error("[Renderer] failed to load printers:", err);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	// Mirror print progress to localStorage on every change so a reload keeps it.
 	useEffect(() => {
@@ -193,11 +218,12 @@ function PrintJobsTab() {
 		}
 	};
 
-	// Silently sends one file to the printer queue with its own settings. Returns
-	// true on success, false on failure (logged, not shown).
-	const printOneFile = async (file) => {
+	// Silently sends one file to the printer queue with its own settings. An
+	// optional deviceName overrides the default printer for this job. Returns true
+	// on success, false on failure (logged, not shown).
+	const printOneFile = async (file, deviceName) => {
 		try {
-			const result = await window.electronAPI.printFile(file.fileId, file.settings);
+			const result = await window.electronAPI.printFile(file.fileId, file.settings, deviceName);
 			if (!result?.success) throw new Error(result?.message || "print failed");
 			return true;
 		} catch (err) {
@@ -221,13 +247,14 @@ function PrintJobsTab() {
 	};
 
 	// Manual single-file print. Marks the file printed on success and, if it was
-	// the last remaining document, completes the whole job.
-	const handlePrintFile = async (file) => {
+	// the last remaining document, completes the whole job. `deviceName` overrides
+	// the default printer for this print.
+	const handlePrintFile = async (file, deviceName) => {
 		const job = selectedEntry;
 		if (!job || printingJob[job._id] || isFilePrinted(job._id, file.fileId)) return;
 
 		await ensurePrintingStatus(job);
-		const ok = await printOneFile(file);
+		const ok = await printOneFile(file, deviceName);
 		if (!ok) return;
 
 		markFilePrinted(job._id, file.fileId);
@@ -240,8 +267,9 @@ function PrintJobsTab() {
 
 	// "Print all": PATCH printing, then silently queue every not-yet-printed doc,
 	// marking each as it prints. A failed doc is skipped so the rest proceed. If
-	// every doc ends up printed, PATCH completed and drop the job.
-	const handlePrintAll = async () => {
+	// every doc ends up printed, PATCH completed and drop the job. `deviceName`
+	// overrides the default printer for the whole batch.
+	const handlePrintAll = async (deviceName) => {
 		const job = selectedEntry;
 		if (!job || printingJob[job._id]) return;
 
@@ -253,7 +281,7 @@ function PrintJobsTab() {
 		const remaining = files.filter((f) => !printedForJob[f.fileId]);
 
 		for (const file of remaining) {
-			const ok = await printOneFile(file);
+			const ok = await printOneFile(file, deviceName);
 			if (ok) {
 				printedForJob[file.fileId] = true;
 				markFilePrinted(job._id, file.fileId);
@@ -302,7 +330,7 @@ function PrintJobsTab() {
 						return (
 							<button
 								key={entry._id}
-								className={`db-entry db-entry--job ${selectedEntry?._id === entry._id ? "db-entry--active" : ""} ${queueIndex === 0 ? "db-entry--top" : ""}`}
+								className={`db-entry db-entry--job ${selectedEntry?._id === entry._id ? "db-entry--top" : ""}`}
 								onClick={() => setSelectedEntry(entry)}
 							>
 								<span className="db-entry__qnum">{queueIndex + 1}</span>
@@ -341,6 +369,8 @@ function PrintJobsTab() {
 							onPrintFile={handlePrintFile}
 							printedFileIds={jobPrinted}
 							printingAll={isPrintingAll}
+							printers={printers}
+							selectedPrinterName={defaultPrinter?.name}
 							headerActions={
 								selectedEntry.status !== "completed" ? (
 									<>
@@ -360,23 +390,21 @@ function PrintJobsTab() {
 											<CheckIcon />
 											Mark as Complete
 										</button>
-										<button
-											className="btn-gradient"
-											onClick={handlePrintAll}
-											disabled={isPrintingAll || remainingCount === 0}
-										>
-											{isPrintingAll ? (
-												<>
-													<div className="spinner spinner--dark" style={{ borderTopColor: "#111b21", width: "14px", height: "14px" }} />
-													Printing…
-												</>
-											) : (
+										<PrintSplitButton
+											size="md"
+											onPrint={handlePrintAll}
+											printers={printers}
+											selectedName={defaultPrinter?.name}
+											busy={isPrintingAll}
+											disabled={remainingCount === 0}
+											showInfo
+											label={
 												<>
 													<PrinterIcon />
 													Print ({remainingCount} {remainingCount === 1 ? "doc" : "docs"})
 												</>
-											)}
-										</button>
+											}
+										/>
 									</>
 								) : null
 							}

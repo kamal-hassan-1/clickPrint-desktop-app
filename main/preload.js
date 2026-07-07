@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	fileUrl: (fileId) => `clickfile://file/${fileId}`,
 	// Open a cached file in the OS default viewer / native print dialog.
 	openFile: (fileId) => ipcRenderer.invoke("files:open", fileId),
-	printFile: (fileId, settings) => ipcRenderer.invoke("files:print", fileId, settings),
+	printFile: (fileId, settings, deviceName) => ipcRenderer.invoke("files:print", fileId, settings, deviceName),
 
 	// Printers
 	listPrinters: (force) => ipcRenderer.invoke("printers:list", force),

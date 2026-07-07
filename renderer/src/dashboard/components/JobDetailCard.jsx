@@ -1,6 +1,7 @@
 import { PdfGlyph, UserGlyph, PrinterIcon, EyeIcon, CheckIcon } from "../icons";
 import { useFiles } from "../FilesContext";
-import { getJobPrintMode } from "../jobUtils";
+import { getJobPrintMode, getJobTotalPages } from "../jobUtils";
+import PrintSplitButton from "./PrintSplitButton";
 
 function sidednessLabel(value) {
 	switch (value) {
@@ -15,16 +16,24 @@ function sidednessLabel(value) {
 	}
 }
 
+// Primary settings — shown as label/value rows next to the thumbnail.
 function fileSettingRows(settings = {}) {
 	return [
 		{ label: "Print Mode", value: settings.color ? "Color" : "Black & White" },
 		{ label: "Paper Size", value: settings.pageType || "—" },
 		{ label: "Orientation", value: settings.orientation, capitalize: true },
 		{ label: "Sides", value: sidednessLabel(settings.sidedness) },
-		{ label: "Pages per Sheet", value: settings.pagesPerSheet || 1 },
-		{ label: "Page Range", value: settings.pageSelection || "All pages" },
-		{ label: "Copies", value: `${settings.numberOfCopies || 1}×` },
 	].filter((row) => row.value != null && row.value !== "");
+}
+
+// Secondary, less-important settings — shown inline (pipe-separated) in a muted
+// pill below the row: "Copies: 1× | Pages/Sheet: 1 | Range: All pages".
+function fileMinorFields(settings = {}) {
+	return [
+		{ label: "Copies", value: `${settings.numberOfCopies || 1}×` },
+		{ label: "Pages/Sheet", value: settings.pagesPerSheet || 1 },
+		{ label: "Range", value: settings.pageSelection || "All pages" },
+	];
 }
 
 function FileThumb({ file }) {
@@ -62,7 +71,7 @@ function FileThumb({ file }) {
 	);
 }
 
-function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, printingAll }) {
+function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, printingAll, printers, selectedPrinterName }) {
 	const settings = file.settings || {};
 	return (
 		<div className={`file-preview ${printed ? "file-preview--printed" : ""}`}>
@@ -79,6 +88,10 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 			<div className="file-preview__content">
 				{showPreview && <FileThumb file={file} />}
 				<div className="file-preview__settings">
+					<div className="file-preview__pages">
+						<span className="file-preview__pages-label">No. of Pages</span>
+						<span className="file-preview__pages-value">{file.numberOfPages ?? "—"}</span>
+					</div>
 					{fileSettingRows(settings).map((row) => (
 						<div key={row.label} className="receipt-row">
 							<span className="receipt-label">{row.label}</span>
@@ -87,6 +100,14 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 							</span>
 						</div>
 					))}
+					<div className="file-preview__minor">
+						{fileMinorFields(settings).map((f, i) => (
+							<span key={f.label} className="file-preview__minor-item">
+								{i > 0 && <span className="file-preview__minor-sep">|</span>}
+								{f.label}: {f.value}
+							</span>
+						))}
+					</div>
 				</div>
 			</div>
 			{(onPreview || onPrint) && (
@@ -98,23 +119,26 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 						</button>
 					)}
 					{onPrint && (
-						<button
-							className="btn-gradient btn-sm"
-							onClick={() => onPrint(file)}
-							disabled={printed || printingAll}
-						>
-							{printed ? (
-								<>
-									<CheckIcon />
-									Printed
-								</>
-							) : (
-								<>
-									<PrinterIcon />
-									Print
-								</>
-							)}
-						</button>
+						printed ? (
+							<button className="btn-gradient btn-sm" disabled>
+								<CheckIcon />
+								Printed
+							</button>
+						) : (
+							<PrintSplitButton
+								size="sm"
+								onPrint={(deviceName) => onPrint(file, deviceName)}
+								printers={printers}
+								selectedName={selectedPrinterName}
+								disabled={printingAll}
+								label={
+									<>
+										<PrinterIcon />
+										Print
+									</>
+								}
+							/>
+						)
 					)}
 				</div>
 			)}
@@ -132,9 +156,10 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 // `headerActions` is an optional node (decline / mark-complete buttons) rendered
 // beside the title. Per-file preview/print handlers, when provided, render
 // action buttons under each file.
-function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true, printedFileIds, printingAll }) {
+function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true, printedFileIds, printingAll, printers, selectedPrinterName }) {
 	const files = entry.files || [];
 	const cost = entry.cost;
+	const totalPages = getJobTotalPages(entry);
 
 	return (
 		<div className="job-detail">
@@ -169,12 +194,14 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 							<span className="receipt-value">{entry.filesCount} {entry.filesCount === 1 ? "document" : "documents"}</span>
 						</div>
 						<div className="receipt-row">
-							<span className="receipt-label">Total Copies</span>
-							<span className="receipt-value">{entry.copies}×</span>
-						</div>
-						<div className="receipt-row">
 							<span className="receipt-label">Printing Mode</span>
 							<span className="receipt-value">{getJobPrintMode(entry)}</span>
+						</div>
+						<div className="receipt-row">
+							<span className="receipt-label">Total Pages</span>
+							<span className="receipt-value" style={{ color: "var(--color-accent)", fontWeight: 700 }}>
+								{totalPages != null ? `${totalPages} ${totalPages === 1 ? "page" : "pages"}` : "—"}
+							</span>
 						</div>
 						{entry.note && (
 							<div className="receipt-row" style={{ alignItems: "flex-start", marginTop: "4px" }}>
@@ -241,6 +268,8 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 								showPreview={showPreview}
 								printed={!!printedFileIds?.[file.fileId]}
 								printingAll={printingAll}
+								printers={printers}
+								selectedPrinterName={selectedPrinterName}
 							/>
 						))}
 					</div>
