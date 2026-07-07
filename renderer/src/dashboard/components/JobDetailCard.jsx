@@ -4,14 +4,12 @@ import { getJobPrintMode } from "../jobUtils";
 
 function sidednessLabel(value) {
 	switch (value) {
-		case "single":
+		case "none":
 			return "Single-sided";
 		case "long":
 			return "Double-sided (long edge)";
 		case "short":
 			return "Double-sided (short edge)";
-		case "double":
-			return "Double-sided";
 		default:
 			return value || "—";
 	}
@@ -23,7 +21,7 @@ function fileSettingRows(settings = {}) {
 		{ label: "Paper Size", value: settings.pageType || "—" },
 		{ label: "Orientation", value: settings.orientation, capitalize: true },
 		{ label: "Sides", value: sidednessLabel(settings.sidedness) },
-		{ label: "Pages / Sheet", value: settings.pagesPerSheet || 1 },
+		{ label: "Pages per Sheet", value: settings.pagesPerSheet || 1 },
 		{ label: "Page Range", value: settings.pageSelection || "All pages" },
 		{ label: "Copies", value: `${settings.numberOfCopies || 1}×` },
 	].filter((row) => row.value != null && row.value !== "");
