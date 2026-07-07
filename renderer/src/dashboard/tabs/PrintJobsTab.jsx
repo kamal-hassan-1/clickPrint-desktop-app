@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useJobs } from "../JobsContext";
-import { ACTIVE_STATUSES } from "../jobUtils";
+import { ACTIVE_STATUSES, getJobPrintMode } from "../jobUtils";
 import ListColumn from "../components/ListColumn";
 import WelcomePane from "../components/WelcomePane";
 import JobDetailCard from "../components/JobDetailCard";
@@ -314,7 +314,7 @@ function PrintJobsTab() {
 									<div className="db-entry__line">
 										<span className="db-entry__sub">
 											{entry.createdBy?.name ? `${entry.createdBy.name} · ` : ""}
-											{entry.copies} {entry.copies === 1 ? "copy" : "copies"} · {entry.color ? "Color" : "B&W"} · {entry.filesCount} {entry.filesCount === 1 ? "file" : "files"}
+											{entry.copies} {entry.copies === 1 ? "copy" : "copies"} · {getJobPrintMode(entry, true)} · {entry.filesCount} {entry.filesCount === 1 ? "file" : "files"}
 										</span>
 										<span className="db-entry__right">
 											<span className="db-entry__time">{entry.time}</span>

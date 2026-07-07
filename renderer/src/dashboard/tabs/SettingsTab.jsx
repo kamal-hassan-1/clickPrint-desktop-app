@@ -6,8 +6,6 @@ import { TrashIcon } from "../icons";
 
 const PAGE_TYPES = ["A4", "A5", "A3", "Letter", "Legal"];
 
-// Settings sections shown in the left column. Add more entries here as the
-// settings surface grows — each renders its own panel in the right pane.
 const SECTIONS = [
 	{ id: "pricing", label: "Pricing", description: "Print rates by paper, color & sides" },
 	{ id: "profile", label: "Shop Profile", description: "Manage shop name, address & capabilities" },
@@ -34,9 +32,6 @@ function Segmented({ options, value, onChange }) {
 	);
 }
 
-// Multi-select segmented control. Each group must always keep at least one
-// option selected — clicking the last remaining active option in the group is
-// a no-op (with a tooltip explaining why) rather than letting it deselect.
 function MultiSegmented({ options, selectedValues, onChange }) {
 	const optionValues = options.map((o) => o.value);
 	const selectedInGroup = selectedValues.filter((v) => optionValues.includes(v));

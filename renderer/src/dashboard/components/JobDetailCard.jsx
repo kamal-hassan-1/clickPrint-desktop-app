@@ -1,5 +1,6 @@
 import { PdfGlyph, UserGlyph, PrinterIcon, EyeIcon, CheckIcon } from "../icons";
 import { useFiles } from "../FilesContext";
+import { getJobPrintMode } from "../jobUtils";
 
 function sidednessLabel(value) {
 	switch (value) {
@@ -149,14 +150,12 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 				<div className="detail-tile detail-tile--info">
 					<div className="detail-tile__header">
 						<h4 className="receipt-title">{entry.fileName}</h4>
-						<span className="receipt-subtitle">
-							Job ID: #{entry._id.slice(-6)} · Received {entry.time}
-						</span>
+						<span className="receipt-subtitle">Received {entry.time}</span>
 						{entry.createdBy && (
 							<span className="receipt-requester">
 								<UserGlyph />
 								{entry.createdBy.name}
-								{entry.createdBy.number ? ` · ${entry.createdBy.number}` : ""}
+								{entry.formattedNumber ? ` · ${entry.formattedNumber}` : ""}
 							</span>
 						)}
 					</div>
@@ -177,7 +176,7 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 						</div>
 						<div className="receipt-row">
 							<span className="receipt-label">Printing Mode</span>
-							<span className="receipt-value">{entry.color ? "Color Print" : "Black & White"}</span>
+							<span className="receipt-value">{getJobPrintMode(entry)}</span>
 						</div>
 						{entry.note && (
 							<div className="receipt-row" style={{ alignItems: "flex-start", marginTop: "4px" }}>

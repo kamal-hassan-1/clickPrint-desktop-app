@@ -56,3 +56,32 @@ export function transformJob(job) {
 		statusHistory: job.statusHistory || [],
 	};
 }
+
+export function getJobPrintMode(entry, isShort = false) {
+	const files = entry.files || [];
+	if (files.length === 0) {
+		if (isShort) {
+			return entry.color ? "Color" : "B&W";
+		}
+		return entry.color ? "Coloured" : "Black & White";
+	}
+
+	let hasColor = false;
+	let hasBW = false;
+	for (const file of files) {
+		if (file.settings?.color) {
+			hasColor = true;
+		} else {
+			hasBW = true;
+		}
+	}
+
+	if (hasColor && hasBW) {
+		return isShort ? "Mixed" : "Mixed (Coloured & B/W)";
+	}
+	if (hasColor) {
+		return isShort ? "Color" : "Coloured";
+	}
+	return isShort ? "B&W" : "Black & White";
+}
+
