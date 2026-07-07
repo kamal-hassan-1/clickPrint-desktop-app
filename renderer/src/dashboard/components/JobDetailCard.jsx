@@ -71,7 +71,7 @@ function FileThumb({ file }) {
 	);
 }
 
-function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, printingAll, printers, selectedPrinterName }) {
+function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, printingAll, printers, selectedPrinterName, onPrinterMenuOpen }) {
 	const settings = file.settings || {};
 	return (
 		<div className={`file-preview ${printed ? "file-preview--printed" : ""}`}>
@@ -128,6 +128,7 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 							<PrintSplitButton
 								size="sm"
 								onPrint={(deviceName) => onPrint(file, deviceName)}
+								onOpen={onPrinterMenuOpen}
 								printers={printers}
 								selectedName={selectedPrinterName}
 								disabled={printingAll}
@@ -156,7 +157,7 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 // `headerActions` is an optional node (decline / mark-complete buttons) rendered
 // beside the title. Per-file preview/print handlers, when provided, render
 // action buttons under each file.
-function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true, printedFileIds, printingAll, printers, selectedPrinterName }) {
+function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true, printedFileIds, printingAll, printers, selectedPrinterName, onPrinterMenuOpen }) {
 	const files = entry.files || [];
 	const cost = entry.cost;
 	const totalPages = getJobTotalPages(entry);
@@ -254,9 +255,6 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 
 				{/* Right — file previews (spans both rows, scrolls) */}
 				<div className="detail-tile detail-tile--files">
-					<div className="detail-tile__header">
-						<h4 className="receipt-title">Files ({files.length})</h4>
-					</div>
 					<div className="detail-tile__body--scroll file-preview-list">
 						{files.map((file, index) => (
 							<FilePreview
@@ -270,6 +268,7 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 								printingAll={printingAll}
 								printers={printers}
 								selectedPrinterName={selectedPrinterName}
+								onPrinterMenuOpen={onPrinterMenuOpen}
 							/>
 						))}
 					</div>

@@ -8,6 +8,7 @@ import { ChevronDownIcon, CheckIcon } from "../icons";
 // `undefined` for the default, or a printer name for an override.
 function PrintSplitButton({
 	onPrint,
+	onOpen,
 	printers = [],
 	selectedName,
 	disabled = false,
@@ -26,6 +27,7 @@ function PrintSplitButton({
 		printers.find((p) => p.name === selectedName)?.displayName || selectedName || "System default";
 
 	const openMenu = () => {
+		onOpen?.(); // refresh the printer list on open (fire-and-forget)
 		const rect = rowRef.current?.getBoundingClientRect();
 		if (rect) setPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
 		setOpen(true);

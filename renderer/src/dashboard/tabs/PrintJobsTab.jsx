@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useJobs } from "../JobsContext";
 import { ACTIVE_STATUSES, getJobPrintMode } from "../jobUtils";
 import ListColumn from "../components/ListColumn";
@@ -48,25 +48,25 @@ function PrintJobsTab() {
 	const [printers, setPrinters] = useState([]);
 	const [defaultPrinter, setDefaultPrinter] = useState(null);
 
-	useEffect(() => {
-		let cancelled = false;
-		(async () => {
-			try {
-				const [list, selected] = await Promise.all([
-					window.electronAPI.listPrinters(),
-					window.electronAPI.getSelectedPrinter(),
-				]);
-				if (cancelled) return;
-				if (list?.success) setPrinters(list.data || []);
-				setDefaultPrinter(selected || null);
-			} catch (err) {
-				console.error("[Renderer] failed to load printers:", err);
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
+	// Reloads the printer list + saved default. Called once on mount (cached) and
+	// again each time a print dropdown opens (forced, so freshly-plugged printers
+	// and removals show up).
+	const refreshPrinters = useCallback(async (force = false) => {
+		try {
+			const [list, selected] = await Promise.all([
+				window.electronAPI.listPrinters(force),
+				window.electronAPI.getSelectedPrinter(),
+			]);
+			if (list?.success) setPrinters(list.data || []);
+			setDefaultPrinter(selected || null);
+		} catch (err) {
+			console.error("[Renderer] failed to load printers:", err);
+		}
 	}, []);
+
+	useEffect(() => {
+		refreshPrinters();
+	}, [refreshPrinters]);
 
 	// Mirror print progress to localStorage on every change so a reload keeps it.
 	useEffect(() => {
@@ -371,6 +371,7 @@ function PrintJobsTab() {
 							printingAll={isPrintingAll}
 							printers={printers}
 							selectedPrinterName={defaultPrinter?.name}
+							onPrinterMenuOpen={() => refreshPrinters(true)}
 							headerActions={
 								selectedEntry.status !== "completed" ? (
 									<>
@@ -393,6 +394,7 @@ function PrintJobsTab() {
 										<PrintSplitButton
 											size="md"
 											onPrint={handlePrintAll}
+											onOpen={() => refreshPrinters(true)}
 											printers={printers}
 											selectedName={defaultPrinter?.name}
 											busy={isPrintingAll}
