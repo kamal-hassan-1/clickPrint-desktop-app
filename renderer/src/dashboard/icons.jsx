@@ -142,6 +142,25 @@ export const ChevronDownIcon = () => (
 	</svg>
 );
 
+export const PauseIcon = () => (
+	<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+		<rect x="6" y="5" width="4" height="14" rx="1" />
+		<rect x="14" y="5" width="4" height="14" rx="1" />
+	</svg>
+);
+
+export const PlayIcon = () => (
+	<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+		<path d="M7 5v14l12-7z" />
+	</svg>
+);
+
+export const BoltIcon = () => (
+	<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+		<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+	</svg>
+);
+
 export const EyeIcon = () => (
 	<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
 		<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />

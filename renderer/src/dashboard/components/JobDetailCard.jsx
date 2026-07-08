@@ -68,19 +68,24 @@ function FileThumb({ file }) {
 	);
 }
 
-function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, printingAll, printers, selectedPrinterName, onPrinterMenuOpen }) {
+function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, printingAll, printers, selectedPrinterName, onPrinterMenuOpen, autoPrintOn, printingNow }) {
 	const settings = file.settings || {};
 	return (
-		<div className={`file-preview ${printed ? "file-preview--printed" : ""}`}>
+		<div className={`file-preview ${printed ? "file-preview--printed" : ""} ${printingNow ? "file-preview--printing" : ""}`}>
 			<div className="file-preview__heading">
 				<span className="file-preview__index">{index + 1}</span>
 				<span className="file-preview__name" title={file.name}>{file.name}</span>
-				{printed && (
+				{printed ? (
 					<span className="file-preview__badge">
 						<CheckIcon />
 						Printed
 					</span>
-				)}
+				) : printingNow ? (
+					<span className="file-preview__badge file-preview__badge--printing">
+						<div className="spinner spinner--dark" style={{ borderTopColor: "var(--color-primary)", width: "11px", height: "11px" }} />
+						Printing…
+					</span>
+				) : null}
 			</div>
 			<div className="file-preview__content">
 				{showPreview && <FileThumb file={file} />}
@@ -121,6 +126,18 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 								<CheckIcon />
 								Printed
 							</button>
+						) : printingNow ? (
+							<button className="btn-gradient btn-sm" disabled>
+								<div className="spinner spinner--dark" style={{ borderTopColor: "#111b21", width: "14px", height: "14px" }} />
+								Printing…
+							</button>
+						) : autoPrintOn ? (
+							<span className="autoprint-tip" title="Automated printing is on — printing is handled automatically">
+								<button className="btn-gradient btn-sm" disabled style={{ pointerEvents: "none", width: "100%" }}>
+									<PrinterIcon />
+									Print
+								</button>
+							</span>
 						) : (
 							<PrintSplitButton
 								size="sm"
@@ -151,7 +168,7 @@ function FilePreview({ file, index, onPreview, onPrint, showPreview, printed, pr
 //   │    Cost    │                  │
 //   └────────────┴──────────────────┘
 
-function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true, printedFileIds, printingAll, printers, selectedPrinterName, onPrinterMenuOpen }) {
+function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showPreview = true, printedFileIds, printingAll, printers, selectedPrinterName, onPrinterMenuOpen, autoPrintOn, currentFileId }) {
 	const files = entry.files || [];
 	const cost = entry.cost;
 	const totalPages = getJobTotalPages(entry);
@@ -263,6 +280,8 @@ function JobDetailCard({ entry, headerActions, onPreviewFile, onPrintFile, showP
 								printers={printers}
 								selectedPrinterName={selectedPrinterName}
 								onPrinterMenuOpen={onPrinterMenuOpen}
+								autoPrintOn={autoPrintOn}
+								printingNow={currentFileId === file.fileId}
 							/>
 						))}
 					</div>

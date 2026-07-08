@@ -1,0 +1,299 @@
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { ACTIVE_STATUSES } from "./jobUtils";
+import { useJobs } from "./JobsContext";
+import ConfirmDialog from "./components/ConfirmDialog";
+
+// Owns all print execution (manual + automated) and the per-file print progress
+// that both share. When Auto-Print is ON, every new job arriving via SSE is fed
+// into a sequential FIFO queue and printed silently, file by file, with no
+// operator interaction. Lives at the dashboard level so it keeps running across
+// tab switches.
+
+const PRINTED_STORAGE_KEY = "clickprint:printedFiles";
+
+function loadPrintedFiles() {
+	try {
+		return JSON.parse(localStorage.getItem(PRINTED_STORAGE_KEY)) || {};
+	} catch {
+		return {};
+	}
+}
+
+const AutoPrintContext = createContext(null);
+
+export function AutoPrintProvider({ children }) {
+	const { printJobs, setPrintJobs, jobsLoading } = useJobs();
+
+	const [autoPrintEnabled, setEnabled] = useState(false);
+	const [hydrated, setHydrated] = useState(false); // autoprint value loaded from store
+	const [paused, setPaused] = useState(false);
+	const [queueIds, setQueueIds] = useState([]); // FIFO of jobIds awaiting/printing
+	const [current, setCurrent] = useState(null); // { jobId, fileId } printing right now
+	const [printedFiles, setPrintedFiles] = useState(loadPrintedFiles); // { jobId: { fileId: true } }
+	const [failedFiles, setFailedFiles] = useState({}); // ephemeral, per session
+	const [busyJobs, setBusyJobs] = useState({}); // manual "print all" in flight
+	const [requeuePrompt, setRequeuePrompt] = useState(null); // jobIds pending launch re-queue
+
+	const busyRef = useRef(false); // guards the auto processor against re-entrancy
+	const seenRef = useRef(new Set()); // jobIds already considered for enqueue
+	const initedRef = useRef(false); // launch handling done
+	const [tick, setTick] = useState(0); // nudges the processor after async work
+
+	// ── printed-progress persistence + reconciliation ──────────────────────────
+	useEffect(() => {
+		try {
+			localStorage.setItem(PRINTED_STORAGE_KEY, JSON.stringify(printedFiles));
+		} catch (err) {
+			console.warn("[AutoPrint] failed to persist print progress:", err.message);
+		}
+	}, [printedFiles]);
+
+	useEffect(() => {
+		if (printJobs.length === 0) return;
+		const present = new Set(printJobs.map((j) => j._id));
+		setPrintedFiles((prev) => {
+			let changed = false;
+			const next = {};
+			for (const id of Object.keys(prev)) {
+				if (present.has(id)) next[id] = prev[id];
+				else changed = true;
+			}
+			return changed ? next : prev;
+		});
+	}, [printJobs]);
+
+	// ── hydrate the persisted auto-print flag ───────────────────────────────────
+	useEffect(() => {
+		window.electronAPI
+			.getAutoPrint()
+			.then((v) => setEnabled(!!v))
+			.catch((err) => console.warn("[AutoPrint] failed to load setting:", err))
+			.finally(() => setHydrated(true));
+	}, []);
+
+	// ── shared print progress helpers ───────────────────────────────────────────
+	const isFilePrinted = useCallback((jobId, fileId) => !!printedFiles[jobId]?.[fileId], [printedFiles]);
+
+	const markFilePrinted = useCallback((jobId, fileId) => {
+		setPrintedFiles((prev) => ({ ...prev, [jobId]: { ...(prev[jobId] || {}), [fileId]: true } }));
+	}, []);
+
+	const clearJobPrinted = useCallback((jobId) => {
+		setPrintedFiles((prev) => {
+			if (!prev[jobId]) return prev;
+			const next = { ...prev };
+			delete next[jobId];
+			return next;
+		});
+	}, []);
+
+	const setJobStatus = useCallback((jobId, status, rawStatus) => {
+		setPrintJobs((prev) => prev.map((j) => (j._id === jobId ? { ...j, status, rawStatus } : j)));
+	}, [setPrintJobs]);
+
+	// ── print primitives (used by both manual and auto paths) ───────────────────
+	const ensurePrintingStatus = useCallback(async (job) => {
+		if (job.rawStatus === "printing") return;
+		setJobStatus(job._id, "processing", "printing");
+		try {
+			const result = await window.electronAPI.updateJobStatus(job._id, "printing");
+			if (!result?.success) throw new Error(result?.message || "request failed");
+		} catch (err) {
+			console.error("[AutoPrint] failed to set job printing:", err);
+		}
+	}, [setJobStatus]);
+
+	const completeJob = useCallback(async (job) => {
+		setJobStatus(job._id, "completed", "completed");
+		try {
+			const result = await window.electronAPI.updateJobStatus(job._id, "completed");
+			if (!result?.success) throw new Error(result?.message || "request failed");
+			clearJobPrinted(job._id);
+		} catch (err) {
+			console.error("[AutoPrint] failed to complete job:", err);
+			setJobStatus(job._id, job.status, job.rawStatus); // revert
+		}
+	}, [setJobStatus, clearJobPrinted]);
+
+	const printOneFile = useCallback(async (jobId, file, deviceName) => {
+		setCurrent({ jobId, fileId: file.fileId });
+		try {
+			const result = await window.electronAPI.printFile(file.fileId, file.settings, deviceName);
+			if (!result?.success) throw new Error(result?.message || "print failed");
+			return true;
+		} catch (err) {
+			console.error("[AutoPrint] failed to print file:", err);
+			return false;
+		} finally {
+			setCurrent(null);
+		}
+	}, []);
+
+	// ── manual actions (used by the Print Jobs buttons when auto-print is OFF) ───
+	const printFileManual = useCallback(async (job, file, deviceName) => {
+		if (!job || isFilePrinted(job._id, file.fileId) || busyJobs[job._id]) return;
+		await ensurePrintingStatus(job);
+		const ok = await printOneFile(job._id, file, deviceName);
+		if (!ok) return;
+		markFilePrinted(job._id, file.fileId);
+		const printedForJob = { ...(printedFiles[job._id] || {}), [file.fileId]: true };
+		const files = job.files || [];
+		if (files.length && files.every((f) => printedForJob[f.fileId])) await completeJob(job);
+	}, [isFilePrinted, busyJobs, ensurePrintingStatus, printOneFile, markFilePrinted, printedFiles, completeJob]);
+
+	const printAllManual = useCallback(async (job, deviceName) => {
+		if (!job || busyJobs[job._id]) return;
+		setBusyJobs((prev) => ({ ...prev, [job._id]: true }));
+		await ensurePrintingStatus(job);
+		const files = job.files || [];
+		const printedForJob = { ...(printedFiles[job._id] || {}) };
+		for (const file of files) {
+			if (printedForJob[file.fileId]) continue;
+			const ok = await printOneFile(job._id, file, deviceName);
+			if (ok) {
+				printedForJob[file.fileId] = true;
+				markFilePrinted(job._id, file.fileId);
+			}
+		}
+		setBusyJobs((prev) => ({ ...prev, [job._id]: false }));
+		if (files.length && files.every((f) => printedForJob[f.fileId])) await completeJob(job);
+	}, [busyJobs, ensurePrintingStatus, printedFiles, printOneFile, markFilePrinted, completeJob]);
+
+	// ── enqueue helpers ─────────────────────────────────────────────────────────
+	const enqueue = useCallback((ids) => {
+		setQueueIds((prev) => [...prev, ...ids.filter((id) => !prev.includes(id))]);
+	}, []);
+
+	// Launch handling (edge case 2): once jobs have loaded, prompt to re-queue any
+	// unprinted active jobs if auto-print was left on.
+	useEffect(() => {
+		if (!hydrated || jobsLoading || initedRef.current) return;
+		initedRef.current = true;
+		const active = printJobs.filter((j) => ACTIVE_STATUSES.has(j.rawStatus));
+		active.forEach((j) => seenRef.current.add(j._id));
+		if (autoPrintEnabled) {
+			const candidates = active
+				.filter((j) => (j.files || []).some((f) => !isFilePrinted(j._id, f.fileId)))
+				.map((j) => j._id);
+			if (candidates.length) setRequeuePrompt(candidates);
+		}
+	}, [hydrated, jobsLoading, printJobs, autoPrintEnabled, isFilePrinted]);
+
+	// Auto-enqueue jobs that arrive after launch while enabled.
+	useEffect(() => {
+		if (!initedRef.current || !autoPrintEnabled) return;
+		const active = printJobs.filter((j) => ACTIVE_STATUSES.has(j.rawStatus));
+		const fresh = active.filter((j) => !seenRef.current.has(j._id));
+		if (fresh.length === 0) return;
+		fresh.forEach((j) => seenRef.current.add(j._id));
+		enqueue(fresh.map((j) => j._id));
+	}, [printJobs, autoPrintEnabled, enqueue]);
+
+	// ── the FIFO auto processor ──────────────────────────────────────────────────
+	// Prints one file per pass, checking `paused` between files so a pause lets the
+	// in-flight document finish but halts before the next. Drains even when
+	// disabled (so toggling off lets the queue finish — edge case 1).
+	useEffect(() => {
+		if (paused || busyRef.current || queueIds.length === 0) return;
+
+		const jobId = queueIds[0];
+		const job = printJobs.find((j) => j._id === jobId);
+		if (!job || !ACTIVE_STATUSES.has(job.rawStatus)) {
+			setQueueIds((q) => q.filter((id) => id !== jobId)); // gone/terminal → drop
+			return;
+		}
+
+		const files = job.files || [];
+		const jobFailed = failedFiles[jobId] || {};
+		const nextFile = files.find((f) => !isFilePrinted(jobId, f.fileId) && !jobFailed[f.fileId]);
+
+		busyRef.current = true;
+		(async () => {
+			if (!nextFile) {
+				// Nothing left to print for this job.
+				const allPrinted = files.length > 0 && files.every((f) => isFilePrinted(jobId, f.fileId));
+				if (allPrinted) await completeJob(job);
+				setQueueIds((q) => q.filter((id) => id !== jobId));
+			} else {
+				await ensurePrintingStatus(job);
+				const ok = await printOneFile(jobId, nextFile);
+				if (ok) markFilePrinted(jobId, nextFile.fileId);
+				else setFailedFiles((prev) => ({ ...prev, [jobId]: { ...(prev[jobId] || {}), [nextFile.fileId]: true } }));
+			}
+			busyRef.current = false;
+			setTick((t) => t + 1);
+		})();
+	}, [queueIds, paused, printedFiles, printJobs, failedFiles, tick, isFilePrinted, ensurePrintingStatus, printOneFile, markFilePrinted, completeJob]);
+
+	// ── toggle + pause API ───────────────────────────────────────────────────────
+	const enableAutoPrint = useCallback(async () => {
+		await window.electronAPI.setAutoPrint(true);
+		setEnabled(true);
+		// Enqueue the current backlog immediately (chosen behavior).
+		const active = printJobs.filter((j) => ACTIVE_STATUSES.has(j.rawStatus));
+		active.forEach((j) => seenRef.current.add(j._id));
+		enqueue(active.filter((j) => (j.files || []).some((f) => !isFilePrinted(j._id, f.fileId))).map((j) => j._id));
+	}, [printJobs, isFilePrinted, enqueue]);
+
+	const disableAutoPrint = useCallback(async () => {
+		await window.electronAPI.setAutoPrint(false);
+		setEnabled(false); // existing queue keeps draining; new jobs won't enqueue
+	}, []);
+
+	const confirmRequeue = useCallback(() => {
+		setRequeuePrompt((ids) => {
+			if (ids) enqueue(ids);
+			return null;
+		});
+	}, [enqueue]);
+
+	const dismissRequeue = useCallback(() => setRequeuePrompt(null), []);
+
+	// State line for a job in the queue (for the list UI).
+	const queueInfoFor = useCallback((jobId) => {
+		const idx = queueIds.indexOf(jobId);
+		if (idx === -1) return null;
+		if (idx === 0) return { state: paused ? "paused" : "printing", place: 0 };
+		return { state: "queued", place: idx };
+	}, [queueIds, paused]);
+
+	const value = {
+		autoPrintEnabled,
+		paused,
+		setPaused,
+		queueIds,
+		queueCount: queueIds.length,
+		current,
+		printedFiles,
+		isFilePrinted,
+		busyJobs,
+		enableAutoPrint,
+		disableAutoPrint,
+		printFileManual,
+		printAllManual,
+		clearJobPrinted,
+		queueInfoFor,
+	};
+
+	return (
+		<AutoPrintContext.Provider value={value}>
+			{children}
+			{requeuePrompt && (
+				<ConfirmDialog
+					title="Resume automated printing?"
+					message={`Automated printing is on and ${requeuePrompt.length} unprinted ${requeuePrompt.length === 1 ? "job" : "jobs"} ${requeuePrompt.length === 1 ? "was" : "were"} left over. Add ${requeuePrompt.length === 1 ? "it" : "them"} back to the print queue now?`}
+					confirmLabel="Re-queue"
+					cancelLabel="Not now"
+					onConfirm={confirmRequeue}
+					onCancel={dismissRequeue}
+				/>
+			)}
+		</AutoPrintContext.Provider>
+	);
+}
+
+export function useAutoPrint() {
+	const ctx = useContext(AutoPrintContext);
+	if (!ctx) throw new Error("useAutoPrint must be used within an AutoPrintProvider");
+	return ctx;
+}

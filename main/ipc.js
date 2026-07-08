@@ -175,6 +175,17 @@ function registerIpcHandlers(getMainWindow) {
 		return { success: true };
 	});
 
+	// ── Automated printing toggle (persisted) ──────────────────────────────────
+	ipcMain.handle("settings:get-autoprint", async () => {
+		return store.get("autoPrint") === true;
+	});
+
+	ipcMain.handle("settings:set-autoprint", async (_event, enabled) => {
+		console.log("[IPC] settings:set-autoprint →", !!enabled);
+		store.set("autoPrint", !!enabled);
+		return { success: true };
+	});
+
 	// If a session was restored from disk on startup, begin syncing jobs right
 	// away so the dashboard is live without requiring a fresh login.
 	if (getAuthState().token) {

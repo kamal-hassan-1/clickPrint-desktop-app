@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { computeStats } from "../statsUtils";
+import { useAutoPrint } from "../AutoPrintContext";
 import {
 	WalletIcon,
 	StackIcon,
@@ -8,6 +9,7 @@ import {
 	TrophyIcon,
 	RefreshIcon,
 	PrinterIcon,
+	BoltIcon,
 } from "../icons";
 
 // Animated count-up for the KPI values. Eases from 0 → target on mount / change.
@@ -178,6 +180,7 @@ function TotalsPanel({ stats }) {
 
 // Dashboard tab — analytics computed from GET /api/history.
 function DashboardTab() {
+	const { autoPrintEnabled, queueCount } = useAutoPrint();
 	const [stats, setStats] = useState(null);
 	const [printer, setPrinter] = useState(null);
 	const [loading, setLoading] = useState(true);
@@ -282,6 +285,22 @@ function DashboardTab() {
 							</div>
 							<div className="kpi-card__sub">
 								{printer ? "Used for all print jobs" : "Choose one in the Printers tab"}
+							</div>
+						</div>
+						<div className={`kpi-card ${autoPrintEnabled ? "kpi-card--primary" : "kpi-card--slate"}`} style={{ animationDelay: "35ms" }}>
+							<div className="kpi-card__top">
+								<span className="kpi-card__icon"><BoltIcon /></span>
+								<span className="kpi-card__label">Automated Printing</span>
+							</div>
+							<div className="kpi-card__value kpi-card__value--text">
+								{autoPrintEnabled ? "On" : "Off"}
+							</div>
+							<div className="kpi-card__sub">
+								{autoPrintEnabled
+									? queueCount > 0
+										? `${queueCount} job${queueCount === 1 ? "" : "s"} in queue`
+										: "Waiting for jobs"
+									: "Jobs printed manually"}
 							</div>
 						</div>
 					</div>

@@ -37,6 +37,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getSelectedPrinter: () => ipcRenderer.invoke("printers:get-selected"),
 	setSelectedPrinter: (printer) => ipcRenderer.invoke("printers:set-selected", printer),
 
+	// Automated printing toggle (persisted in the main-process store)
+	getAutoPrint: () => ipcRenderer.invoke("settings:get-autoprint"),
+	setAutoPrint: (enabled) => ipcRenderer.invoke("settings:set-autoprint", enabled),
+
 	// Shop
 	updateShop: (shopId, data) => ipcRenderer.invoke("shop:update", shopId, data),
 
