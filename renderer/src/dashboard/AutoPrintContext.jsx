@@ -238,16 +238,22 @@ export function AutoPrintProvider({ children }) {
 	const disableAutoPrint = useCallback(async () => {
 		await window.electronAPI.setAutoPrint(false);
 		setEnabled(false); // existing queue keeps draining; new jobs won't enqueue
+		setPaused(false); // ensure the queue actually drains (edge case 1)
 	}, []);
 
+	// "Re-queue & print now" — enqueue the leftovers and let them run.
 	const confirmRequeue = useCallback(() => {
-		setRequeuePrompt((ids) => {
-			if (ids) enqueue(ids);
-			return null;
-		});
-	}, [enqueue]);
+		if (requeuePrompt) enqueue(requeuePrompt);
+		setRequeuePrompt(null);
+	}, [requeuePrompt, enqueue]);
 
-	const dismissRequeue = useCallback(() => setRequeuePrompt(null), []);
+	// "Not now" — still enqueue the leftovers, but start the queue paused so the
+	// operator can review/decline before anything prints. Resume kicks it off.
+	const dismissRequeue = useCallback(() => {
+		if (requeuePrompt) enqueue(requeuePrompt);
+		setPaused(true);
+		setRequeuePrompt(null);
+	}, [requeuePrompt, enqueue]);
 
 	// State line for a job in the queue (for the list UI).
 	const queueInfoFor = useCallback((jobId) => {
@@ -281,9 +287,9 @@ export function AutoPrintProvider({ children }) {
 			{requeuePrompt && (
 				<ConfirmDialog
 					title="Resume automated printing?"
-					message={`Automated printing is on and ${requeuePrompt.length} unprinted ${requeuePrompt.length === 1 ? "job" : "jobs"} ${requeuePrompt.length === 1 ? "was" : "were"} left over. Add ${requeuePrompt.length === 1 ? "it" : "them"} back to the print queue now?`}
-					confirmLabel="Re-queue"
-					cancelLabel="Not now"
+					message={`Automated printing is on and ${requeuePrompt.length} unprinted ${requeuePrompt.length === 1 ? "job" : "jobs"} ${requeuePrompt.length === 1 ? "was" : "were"} left over. Start printing ${requeuePrompt.length === 1 ? "it" : "them"} now? Choosing “Not now” keeps ${requeuePrompt.length === 1 ? "it" : "them"} in the queue but pauses automated printing — press Resume in Print Jobs when you’re ready.`}
+					confirmLabel="Re-queue & print"
+					cancelLabel="Not now (pause)"
 					onConfirm={confirmRequeue}
 					onCancel={dismissRequeue}
 				/>
