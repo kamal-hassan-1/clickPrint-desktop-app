@@ -6,22 +6,44 @@ const { startOfflineWatcher } = require('./printers');
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
-//auto updater logs
+function sendUpdateEvent(channel, payload) {
+	if (window && !window.isDestroyed()) {
+		window.webContents.send(channel, payload);
+	}
+}
+
 autoUpdater.on('error', (err) => {
 	console.error('Auto-updater error:', err);
+	sendUpdateEvent('updater:error', { message: err?.message || String(err) });
 });
 autoUpdater.on('checking-for-update', () => {
 	console.log('Checking for updates...');
+	sendUpdateEvent('updater:checking', {});
 });
 autoUpdater.on('update-available', (info) => {
 	console.log('Update available:', info);
+	sendUpdateEvent('updater:available', { version: info.version, releaseDate: info.releaseDate });
 });
-autoUpdater.on('update-not-available', () => {
+autoUpdater.on('update-not-available', (info) => {
 	console.log('Update not available');
+	sendUpdateEvent('updater:not-available', { version: info.version });
+});
+autoUpdater.on('download-progress', (progress) => {
+	console.log(`Download progress: ${Math.round(progress.percent)}%`);
+	sendUpdateEvent('updater:progress', { percent: progress.percent });
 });
 autoUpdater.on('update-downloaded', (info) => {
 	console.log(`Update ${info.version} downloaded, will install on restart`);
+	sendUpdateEvent('updater:downloaded', { version: info.version });
 });
+
+// Let the renderer trigger a restart + install.
+ipcMain.on('app:restart-to-update', () => {
+	autoUpdater.quitAndInstall();
+});
+
+// Expose current app version to the renderer.
+ipcMain.handle('app:get-version', () => app.getVersion());
 
 // Privileged scheme registration must happen before the app is ready.
 registerFileSchemePrivileges();
@@ -96,7 +118,7 @@ app.whenReady().then(() => {
 	// listing printers never blocks on a PowerShell spawn.
 	startOfflineWatcher();
 	if (app.isPackaged) {
-		autoUpdater.checkForUpdatesAndNotify();
+		autoUpdater.checkForUpdates();
 	}
 });
 

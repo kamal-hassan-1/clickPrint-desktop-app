@@ -62,4 +62,30 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	minimizeWindow: () => ipcRenderer.send("window:minimize"),
 	maximizeWindow: () => ipcRenderer.send("window:maximize"),
 	closeWindow: () => ipcRenderer.send("window:close"),
+
+	// Auto-update
+	getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+	restartToUpdate: () => ipcRenderer.send("app:restart-to-update"),
+	onUpdateEvent: (callback) => {
+		const channels = [
+			"updater:checking",
+			"updater:available",
+			"updater:not-available",
+			"updater:progress",
+			"updater:downloaded",
+			"updater:error",
+		];
+		const handler = (channel) => (_event, payload) => callback(channel, payload);
+		const handlers = channels.map((ch) => {
+			const h = handler(ch);
+			ipcRenderer.on(ch, h);
+			return { channel: ch, handler: h };
+		});
+		// Return a cleanup function to remove all listeners.
+		return () => {
+			handlers.forEach(({ channel, handler: h }) =>
+				ipcRenderer.removeListener(channel, h),
+			);
+		};
+	},
 });

@@ -1014,6 +1014,136 @@ body,
 	justify-content: center;
 }
 
+/* ── Update banner (Claude Code-style prompt in sidebar) ── */
+
+.update-banner {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 52px;
+	padding: 8px;
+	border-radius: var(--radius-md);
+	background: var(--color-bg);
+	border: 1px solid var(--border-light);
+	transition: all var(--transition-base);
+	cursor: default;
+	overflow: hidden;
+	position: relative;
+	margin-bottom: 4px;
+}
+
+.update-banner--ready {
+	cursor: pointer;
+}
+
+.update-banner--ready:hover {
+	background: rgba(0, 230, 173, 0.08);
+	border-color: var(--color-primary);
+}
+
+.update-banner__icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+	background: rgba(134, 150, 160, 0.1);
+	color: var(--color-text-secondary);
+	transition: all var(--transition-base);
+}
+
+.update-banner--ready .update-banner__icon {
+	background: rgba(0, 230, 173, 0.12);
+	color: var(--color-primary);
+}
+
+.update-banner__body {
+	display: none;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1;
+}
+
+.update-banner__title {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-text-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.3;
+}
+
+.update-banner__version {
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--color-text-muted);
+	white-space: nowrap;
+	line-height: 1.2;
+}
+
+.update-banner__arrow {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--color-text-muted);
+	transition: transform var(--transition-fast);
+}
+
+.update-banner--ready:hover .update-banner__arrow {
+	color: var(--color-primary);
+	transform: translateX(2px);
+}
+
+/* ── Download progress bar ── */
+
+.update-banner__progress-track {
+	width: 100%;
+	height: 3px;
+	border-radius: 2px;
+	background: rgba(134, 150, 160, 0.15);
+	overflow: hidden;
+	margin-top: 2px;
+}
+
+.update-banner__progress-bar {
+	height: 100%;
+	border-radius: 2px;
+	background: var(--color-primary);
+	transition: width 300ms ease;
+}
+
+/* ── Expanded banner on sidebar hover ── */
+/* When the user hovers anywhere on the sidebar, widen the banner so the
+   text and arrow become visible — matching Claude Code's reveal behaviour. */
+
+.db-sidebar:hover .update-banner {
+	width: 180px;
+}
+
+.db-sidebar:hover .update-banner__body {
+	display: flex;
+}
+
+.db-sidebar:hover .update-banner__arrow {
+	display: flex;
+}
+
+/* ── Pulse animation for the ready-state icon ── */
+
+@keyframes update-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
+}
+
+.update-banner--downloading .update-banner__icon {
+	animation: update-pulse 2s ease-in-out infinite;
+}
+
 
 /* ── Middle list panel (WhatsApp style chat list) ── */
 
