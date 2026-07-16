@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import ConfirmDialog from "../ConfirmDialog";
 import { Segmented } from "./Segmented";
 import PrinterSelect from "./PrinterSelect";
-import { TrashIcon, EditIcon, CheckIcon } from "../../icons";
+import { TrashIcon, EditIcon, CheckIcon, BoltIcon } from "../../icons";
 
 const PAGE_TYPES = ["A4", "A5", "A3", "Letter", "Legal"];
 const RATE_MIN = 1;
@@ -380,16 +380,13 @@ function PricingSettings() {
 								}}
 							>
 								<div className="db-entry__info">
-									<span className="db-entry__name">{price.name || serviceLabel(price.keys)}</span>
-									<span className="db-entry__meta">
-										{price.keys?.pageType} · {price.keys?.colored ? "Color" : "Black & White"} · {price.keys?.sidedness ? "Double" : "Single"}
+									<span className="db-entry__name">{price.keys?.pageType} · {price.keys?.colored ? "Color" : "Black & White"} · {price.keys?.sidedness ? "Double" : "Single"}</span>
+									<span className="db-entry__meta db-entry__meta--printers">
 										{bound.map(({ printer, useAuto }) => (
-											<span key={printer._id}>
-												{" · "}
-												{printer.label}
-												{" "}
-												<span style={{ justifyContent: "center", alignItems: "center" }} className={`printer-dot ${printer.online ? "printer-dot--on" : "printer-dot--off"}`} />
-												{useAuto && " (Auto)"}
+											<span className="printer-row" key={printer._id}>
+												{useAuto && <span className="printer-row__auto" title="Automated"><BoltIcon /></span>}
+												<span className="printer-row__label">{printer.label}</span>
+												<span className={`printer-dot ${printer.online ? "printer-dot--on" : "printer-dot--off"}`} />
 											</span>
 										))}
 									</span>

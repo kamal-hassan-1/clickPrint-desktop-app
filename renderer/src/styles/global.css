@@ -1398,6 +1398,38 @@ body,
 	text-overflow: ellipsis;
 }
 
+/* ── Printer rows inside price cards ── */
+.db-entry__meta--printers {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	white-space: normal;
+	overflow: visible;
+}
+
+.printer-row {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	line-height: 1.3;
+	margin-left: 1rem;
+}
+
+.printer-row__label {
+	font-size: 11.5px;
+}
+
+.printer-row__auto {
+	display: inline-flex;
+	align-items: center;
+	color: var(--color-primary);
+}
+
+.printer-row__auto svg {
+	width: 12px;
+	height: 12px;
+}
+
 .db-entry__time {
 	font-size: 11px;
 	color: var(--color-text-muted);
