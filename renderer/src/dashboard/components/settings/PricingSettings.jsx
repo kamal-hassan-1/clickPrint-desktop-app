@@ -2,30 +2,59 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import ConfirmDialog from "../ConfirmDialog";
 import { Segmented } from "./Segmented";
-import { TrashIcon } from "../../icons";
+import PrinterSelect from "./PrinterSelect";
+import { TrashIcon, EditIcon, CheckIcon } from "../../icons";
 
 const PAGE_TYPES = ["A4", "A5", "A3", "Letter", "Legal"];
+const RATE_MIN = 1;
+const RATE_MAX = 200;
 
-// Create / edit form for a single price, shown inside a modal. Remounted (keyed)
-// per selection so the fields reset cleanly.
-function PriceForm({ price, error, saving, onSave, onCancel }) {
+// Conventional label derived from a service's keys (e.g. "A4-BW-SS"). The
+// backend doesn't return a name for services, so the UI derives it.
+function serviceLabel(keys = {}) {
+	return `${keys.pageType || "—"}-${keys.colored ? "CL" : "BW"}-${keys.sidedness ? "DS" : "SS"}`;
+}
+
+// Two services clash when they price the same print configuration.
+function sameKeys(a = {}, b = {}) {
+	return (
+		a.pageType === b.pageType &&
+		!!a.colored === !!b.colored &&
+		!!a.sidedness === !!b.sidedness
+	);
+}
+
+// A service's printer id, whether the backend returns it raw or populated.
+function printerIdOf(entry) {
+	if (!entry) return "";
+	return typeof entry.printer === "string" ? entry.printer : entry.printer?._id || "";
+}
+
+// Create / edit form for a single service, shown inside a modal. Remounted
+// (keyed) per selection so the fields reset cleanly.
+function PriceForm({ price, printers, error, saving, onSave, onCancel }) {
 	const isNew = !price._id;
 	const [rate, setRate] = useState(price.rate ?? "");
 	const [colored, setColored] = useState(price.keys?.colored ?? false);
 	const [pageType, setPageType] = useState(price.keys?.pageType || "A4");
 	const [sidedness, setSidedness] = useState(price.keys?.sidedness ?? false);
 
-	// Conventional name derived from the keys, used as a default if left blank.
-	const suggestedName = `${pageType}-${colored ? "CL" : "BW"}-${sidedness ? "DS" : "SS"}`;
-	const isRateInvalid = rate === "" || isNaN(Number(rate)) || Number(rate) < 1 || Number(rate) > 50;
-	const isSubmitDisabled = saving || isRateInvalid;
+	const firstPrinter = price.printers?.[0];
+	const [printerId, setPrinterId] = useState(printerIdOf(firstPrinter));
+	const [useAuto, setUseAuto] = useState(firstPrinter?.useAuto ?? false);
+
+	const name = serviceLabel({ pageType, colored, sidedness });
+	const rateNum = Number(rate);
+	const isRateInvalid = rate === "" || isNaN(rateNum) || rateNum < RATE_MIN || rateNum > RATE_MAX;
+	const noPrinters = printers.length === 0;
+	const isSubmitDisabled = saving || isRateInvalid || !printerId;
 
 	const submit = (e) => {
 		e.preventDefault();
 		onSave({
-			name: suggestedName,
-			rate: Number(rate) || 0,
-			keys: { colored, pageType, sidedness },
+			rate: rateNum || 0,
+			keys: { pageType, colored, sidedness },
+			printers: printerId ? [{ useAuto, printer: printerId }] : [],
 		});
 	};
 
@@ -36,7 +65,7 @@ function PriceForm({ price, error, saving, onSave, onCancel }) {
 			{error && <div className="form-error">{error}</div>}
 
 			<div className="form-field">
-				<label className="form-label" style={{ marginBottom: "1.5rem" }}>Name: {suggestedName}</label>
+				<label className="form-label" style={{ marginBottom: "1.5rem" }}>Name: {name}</label>
 			</div>
 
 			<div className="form-field">
@@ -44,14 +73,16 @@ function PriceForm({ price, error, saving, onSave, onCancel }) {
 				<input
 					className="form-input"
 					type="number"
-					min="1"
-					max="50"
+					min={RATE_MIN}
+					max={RATE_MAX}
 					step="1"
 					value={rate}
 					onChange={(e) => setRate(e.target.value)}
 					required
 				/>
-				{isRateInvalid && <span className="form-hint">Enter a rate between Rs. 1 and Rs. 50 per page.</span>}
+				{isRateInvalid && (
+					<span className="form-hint">Enter a rate between Rs. {RATE_MIN} and Rs. {RATE_MAX} per page.</span>
+				)}
 			</div>
 
 			<div className="form-field">
@@ -87,15 +118,43 @@ function PriceForm({ price, error, saving, onSave, onCancel }) {
 				/>
 			</div>
 
+			<div className="form-field">
+				<label className="form-label">Printer</label>
+				<PrinterSelect
+					printers={printers}
+					value={printerId}
+					onChange={setPrinterId}
+					disabled={saving || noPrinters}
+				/>
+				<span className="form-hint">
+					{noPrinters
+						? "Add a printer in the Printers tab before creating a service."
+						: "Select a printer to be assigned to this service."}
+				</span>
+			</div>
+
+			<div className="form-field">
+				<button
+					type="button"
+					className={`form-check ${useAuto ? "form-check--on" : ""}`}
+					onClick={() => setUseAuto((v) => !v)}
+					role="checkbox"
+					aria-checked={useAuto}
+					disabled={saving}
+				>
+					<span className="form-check__box">{useAuto && <CheckIcon />}</span>
+					<span className="form-check__label">Can automated printing be used for this service</span>
+				</button>
+				<span className="form-hint">
+					If checked, this service will be available to use automated printing.
+				</span>
+			</div>
+
 			<div className="action-panel">
 				<button type="button" className="btn-outline" onClick={onCancel} disabled={saving}>
 					Cancel
 				</button>
-				<button
-					type="submit"
-					className="btn-gradient"
-					disabled={isSubmitDisabled}
-				>
+				<button type="submit" className="btn-gradient" disabled={isSubmitDisabled}>
 					{saving ? "Saving…" : isNew ? "Create Price" : "Save Changes"}
 				</button>
 			</div>
@@ -103,14 +162,15 @@ function PriceForm({ price, error, saving, onSave, onCancel }) {
 	);
 }
 
-// Pricing settings panel — the shop's print pricing CRUD, rendered in the right
-// detail pane. The price list lives here with a "New Price" action; creating or
+// Pricing settings panel — the shop's print services CRUD, rendered in the right
+// detail pane. The list lives here with a "New Price" action; creating or
 // editing opens the form in a modal.
 function PricingSettings() {
 	const [prices, setPrices] = useState([]);
+	const [printers, setPrinters] = useState([]); // registered printers + live online flag
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
-	const [editing, setEditing] = useState(null); // price object, { keys: {} } for new, or null
+	const [editing, setEditing] = useState(null); // service object, { keys: {} } for new, or null
 	const [saving, setSaving] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState(null);
 	const [pendingOverwrite, setPendingOverwrite] = useState(null);
@@ -124,24 +184,50 @@ function PricingSettings() {
 		setLoading(true);
 		setError(null);
 		try {
-			const result = await window.electronAPI.fetchPrices();
-			if (result.success) setPrices(result.data.prices || []);
+			const result = await window.electronAPI.fetchServices();
+			if (result.success) setPrices(result.data || []);
 			else setError(result.message || "Failed to load prices.");
 		} catch (err) {
-			console.error("[Renderer] failed to load prices:", err);
+			console.error("[Renderer] failed to load services:", err);
 			setError("Failed to load prices.");
 		} finally {
 			setLoading(false);
 		}
 	}, []);
 
+	// The shop's registered printers, each tagged with whether it's reachable
+	// right now — mirrors the Printers tab's merge.
+	const loadPrinters = useCallback(async () => {
+		try {
+			const [registered, local] = await Promise.all([
+				window.electronAPI.fetchPrinters(),
+				window.electronAPI.listPrinters(),
+			]);
+			if (!registered?.success) return;
+			const localByName = new Map(
+				(local?.success ? local.data || [] : []).map((p) => [p.name, p])
+			);
+			setPrinters(
+				(registered.data || []).map((p) => ({
+					_id: p._id,
+					name: p.name,
+					label: localByName.get(p.name)?.displayName || p.name,
+					online: localByName.has(p.name),
+				}))
+			);
+		} catch (err) {
+			console.error("[Renderer] failed to load printers:", err);
+		}
+	}, []);
+
 	useEffect(() => {
 		loadPrices();
-	}, [loadPrices]);
+		loadPrinters();
+	}, [loadPrices, loadPrinters]);
 
 	const handleSave = async (data) => {
 		if (!editing._id) {
-			const existingPrice = prices.find((p) => p.name === data.name);
+			const existingPrice = prices.find((p) => sameKeys(p.keys, data.keys));
 			if (existingPrice) {
 				setPendingOverwrite({ existingPrice, data });
 				return;
@@ -152,8 +238,8 @@ function PricingSettings() {
 		setError(null);
 		try {
 			const result = editing._id
-				? await window.electronAPI.updatePrice(editing._id, data)
-				: await window.electronAPI.createPrice(data);
+				? await window.electronAPI.updateService(editing._id, data)
+				: await window.electronAPI.createService(data);
 			if (result.success) {
 				await loadPrices();
 				setEditing(null);
@@ -172,7 +258,7 @@ function PricingSettings() {
 		setSaving(true);
 		setError(null);
 		try {
-			const result = await window.electronAPI.updatePrice(existingPrice._id, data);
+			const result = await window.electronAPI.updateService(existingPrice._id, data);
 			if (result.success) {
 				await loadPrices();
 				setEditing(null);
@@ -189,7 +275,7 @@ function PricingSettings() {
 		setSaving(true);
 		setError(null);
 		try {
-			const result = await window.electronAPI.deletePrice(price._id);
+			const result = await window.electronAPI.deleteService(price._id);
 			if (result.success) {
 				await loadPrices();
 				setEditing(null);
@@ -226,42 +312,65 @@ function PricingSettings() {
 				</div>
 			) : (
 				<div className="price-list">
-					{prices.map((price) => (
-						<div
-							key={price._id}
-							className="db-entry db-entry--price"
-							role="button"
-							tabIndex={0}
-							onClick={() => setEditing(price)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" || e.key === " ") {
-									e.preventDefault();
-									setEditing(price);
-								}
-							}}
-						>
-							<div className="db-entry__info">
-								<span className="db-entry__name">{price.name}</span>
-								<span className="db-entry__meta">
-									{price.keys?.pageType} · {price.keys?.colored ? "Color" : "B&W"} · {price.keys?.sidedness ? "Double" : "Single"}
-								</span>
+					{prices.map((price) => {
+						const printerEntry = price.printers?.[0];
+						const printer = printers.find((p) => p._id === printerIdOf(printerEntry));
+						return (
+							<div
+								key={price._id}
+								className="db-entry db-entry--price"
+								role="button"
+								tabIndex={0}
+								onClick={() => setEditing(price)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										setEditing(price);
+									}
+								}}
+							>
+								<div className="db-entry__info">
+									<span className="db-entry__name">{price.name || serviceLabel(price.keys)}</span>
+									<span className="db-entry__meta">
+										{price.keys?.pageType} · {price.keys?.colored ? "Color" : "B&W"} · {price.keys?.sidedness ? "Double" : "Single"}
+										{printer && (
+											<>
+												{" · "}
+												<span className={`printer-dot ${printer.online ? "printer-dot--on" : "printer-dot--off"}`} />
+												{printer.label}
+											</>
+										)}
+										{printerEntry?.useAuto && " · Auto"}
+									</span>
+								</div>
+								<div className="db-entry__price-actions">
+									<span className="db-entry__price">Rs. {price.rate}</span>
+									<button
+										type="button"
+										className="db-entry__delete-btn db-entry__edit-btn"
+										title="Edit this price"
+										onClick={(e) => {
+											e.stopPropagation();
+											setEditing(price);
+										}}
+									>
+										<EditIcon />
+									</button>
+									<button
+										type="button"
+										className="db-entry__delete-btn"
+										title="Delete this price"
+										onClick={(e) => {
+											e.stopPropagation();
+											setConfirmDelete(price);
+										}}
+									>
+										<TrashIcon />
+									</button>
+								</div>
 							</div>
-							<div className="db-entry__price-actions">
-								<span className="db-entry__price">Rs. {price.rate}</span>
-								<button
-									type="button"
-									className="db-entry__delete-btn"
-									title="Delete this price"
-									onClick={(e) => {
-										e.stopPropagation();
-										setConfirmDelete(price);
-									}}
-								>
-									<TrashIcon />
-								</button>
-							</div>
-						</div>
-					))}
+						);
+					})}
 				</div>
 			)}
 
@@ -271,6 +380,7 @@ function PricingSettings() {
 						<PriceForm
 							key={editing._id || "new"}
 							price={editing}
+							printers={printers}
 							error={error}
 							saving={saving}
 							onSave={handleSave}
@@ -284,7 +394,7 @@ function PricingSettings() {
 			{confirmDelete && createPortal(
 				<ConfirmDialog
 					title="Delete this price?"
-					message={`Are you sure you want to delete "${confirmDelete.name}"? This cannot be undone.`}
+					message={`Are you sure you want to delete "${confirmDelete.name || serviceLabel(confirmDelete.keys)}"? This cannot be undone.`}
 					confirmLabel="Delete"
 					cancelLabel="Cancel"
 					danger
@@ -297,7 +407,7 @@ function PricingSettings() {
 			{pendingOverwrite && createPortal(
 				<ConfirmDialog
 					title="Overwrite Pricing"
-					message={`A pricing structure for "${pendingOverwrite.existingPrice.name}" already exists. Overwrite the existing price with this new rate?`}
+					message={`A pricing structure for "${pendingOverwrite.existingPrice.name || serviceLabel(pendingOverwrite.existingPrice.keys)}" already exists. Overwrite the existing price with this new rate?`}
 					confirmLabel="Overwrite Pricing"
 					cancelLabel="Cancel"
 					onConfirm={handleConfirmOverwrite}

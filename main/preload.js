@@ -59,11 +59,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	// Shop
 	updateShop: (shopId, data) => ipcRenderer.invoke("shop:update", shopId, data),
 
-	// Shop pricing
-	fetchPrices: () => ipcRenderer.invoke("prices:fetch"),
-	createPrice: (price) => ipcRenderer.invoke("prices:create", price),
-	updatePrice: (priceId, price) => ipcRenderer.invoke("prices:update", priceId, price),
-	deletePrice: (priceId) => ipcRenderer.invoke("prices:delete", priceId),
+	// Shop profile
+	fetchShop: () => ipcRenderer.invoke("shop:fetch"),
+
+	// Shop services (priced print configurations)
+	fetchServices: () => ipcRenderer.invoke("services:fetch"),
+	createService: (service) => ipcRenderer.invoke("services:create", service),
+	updateService: (serviceId, service) => ipcRenderer.invoke("services:update", serviceId, service),
+	deleteService: (serviceId) => ipcRenderer.invoke("services:delete", serviceId),
 
 	// Window controls
 	minimizeWindow: () => ipcRenderer.send("window:minimize"),

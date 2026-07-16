@@ -42,7 +42,7 @@ function ShopProfileSettings() {
 		setLoading(true);
 		setError(null);
 		try {
-			const result = await window.electronAPI.fetchPrices();
+			const result = await window.electronAPI.fetchShop();
 			if (result.success && result.data) {
 				setShopId(result.data._id || "");
 				setName(result.data.name || "");

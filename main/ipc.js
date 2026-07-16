@@ -5,10 +5,11 @@ const {
 	updateShop,
 	getAuthState,
 	clearAuthState,
-	fetchPrices,
-	createPrice,
-	updatePrice,
-	deletePrice,
+	fetchShop,
+	fetchServices,
+	createService,
+	updateService,
+	deleteService,
 	fetchPrinters,
 	createPrinter,
 	deletePrinter,
@@ -112,24 +113,29 @@ function registerIpcHandlers(getMainWindow) {
 		return await fetchHistory();
 	});
 
-	ipcMain.handle("prices:fetch", async () => {
-		console.log("[IPC] prices:fetch");
-		return await fetchPrices();
+	ipcMain.handle("shop:fetch", async () => {
+		console.log("[IPC] shop:fetch");
+		return await fetchShop();
 	});
 
-	ipcMain.handle("prices:create", async (_event, price) => {
-		console.log("[IPC] prices:create →", price?.name);
-		return await createPrice(price);
+	ipcMain.handle("services:fetch", async () => {
+		console.log("[IPC] services:fetch");
+		return await fetchServices();
 	});
 
-	ipcMain.handle("prices:update", async (_event, priceId, price) => {
-		console.log("[IPC] prices:update →", priceId);
-		return await updatePrice(priceId, price);
+	ipcMain.handle("services:create", async (_event, service) => {
+		console.log("[IPC] services:create");
+		return await createService(service);
 	});
 
-	ipcMain.handle("prices:delete", async (_event, priceId) => {
-		console.log("[IPC] prices:delete →", priceId);
-		return await deletePrice(priceId);
+	ipcMain.handle("services:update", async (_event, serviceId, service) => {
+		console.log("[IPC] services:update →", serviceId);
+		return await updateService(serviceId, service);
+	});
+
+	ipcMain.handle("services:delete", async (_event, serviceId) => {
+		console.log("[IPC] services:delete →", serviceId);
+		return await deleteService(serviceId);
 	});
 
 	ipcMain.handle("jobs:update-status", async (_event, jobId, status) => {

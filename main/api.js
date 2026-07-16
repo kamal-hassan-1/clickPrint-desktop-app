@@ -230,9 +230,9 @@ function apiError(error) {
 	};
 }
 
-// ── Shop pricing CRUD ─────────────────────────────────────────────────────────
+// ── Shop ──────────────────────────────────────────────────────────────────────
 
-async function fetchPrices() {
+async function fetchShop() {
 	const shopId = getShopId();
 	if (!shopId) return { success: false, message: "Shop not identified." };
 	try {
@@ -241,54 +241,64 @@ async function fetchPrices() {
 		});
 		return unwrap(await readJson(response), "shop");
 	} catch (error) {
-		console.error("[API] fetchPrices error:", error);
+		console.error("[API] fetchShop error:", error);
 		return apiError(error);
 	}
 }
 
-async function createPrice(price) {
-	const shopId = getShopId();
-	if (!shopId) return { success: false, message: "Shop not identified." };
+// ── Shop services CRUD ────────────────────────────────────────────────────────
+// A "service" is a priced print configuration: { rate, keys, printers }. These
+// live under /api/services (the shop is resolved from the auth token).
+
+async function fetchServices() {
 	try {
-		const response = await fetch(`${API_BASE_URL}/api/shops/${shopId}/prices`, {
+		const response = await fetch(`${API_BASE_URL}/api/services`, {
+			headers: authHeaders(),
+		});
+		return unwrap(await readJson(response), "services");
+	} catch (error) {
+		console.error("[API] fetchServices error:", error);
+		return apiError(error);
+	}
+}
+
+async function createService(service) {
+	try {
+		const response = await fetch(`${API_BASE_URL}/api/services`, {
 			method: "POST",
 			headers: authHeaders(),
-			body: JSON.stringify(price),
+			body: JSON.stringify(service),
 		});
-		return unwrap(await readJson(response), "price");
+		return unwrap(await readJson(response), "service");
 	} catch (error) {
-		console.error("[API] createPrice error:", error);
+		console.error("[API] createService error:", error);
 		return apiError(error);
 	}
 }
 
-async function updatePrice(priceId, price) {
-	const shopId = getShopId();
-	if (!shopId) return { success: false, message: "Shop not identified." };
+async function updateService(serviceId, service) {
 	try {
-		const response = await fetch(`${API_BASE_URL}/api/shops/${shopId}/prices/${priceId}`, {
+		const response = await fetch(`${API_BASE_URL}/api/services/${serviceId}`, {
 			method: "PUT",
 			headers: authHeaders(),
-			body: JSON.stringify(price),
+			body: JSON.stringify(service),
 		});
-		return unwrap(await readJson(response), "price");
+		return unwrap(await readJson(response), "service");
 	} catch (error) {
-		console.error("[API] updatePrice error:", error);
+		console.error("[API] updateService error:", error);
 		return apiError(error);
 	}
 }
 
-async function deletePrice(priceId) {
-	const shopId = getShopId();
-	if (!shopId) return { success: false, message: "Shop not identified." };
+async function deleteService(serviceId) {
 	try {
-		const response = await fetch(`${API_BASE_URL}/api/shops/${shopId}/prices/${priceId}`, {
+		const response = await fetch(`${API_BASE_URL}/api/services/${serviceId}`, {
 			method: "DELETE",
 			headers: authHeaders(),
 		});
-		return unwrap(await readJson(response), "price");
+		return unwrap(await readJson(response), "service");
 	} catch (error) {
-		console.error("[API] deletePrice error:", error);
+		console.error("[API] deleteService error:", error);
 		return apiError(error);
 	}
 }
@@ -489,10 +499,11 @@ module.exports = {
 	getAuthState,
 	clearAuthState,
 	updateShop,
-	fetchPrices,
-	createPrice,
-	updatePrice,
-	deletePrice,
+	fetchShop,
+	fetchServices,
+	createService,
+	updateService,
+	deleteService,
 	fetchPrinters,
 	createPrinter,
 	deletePrinter,

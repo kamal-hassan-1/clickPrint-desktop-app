@@ -2120,6 +2120,8 @@ body,
 
 .settings-panel__action {
 	flex: 0 0 auto;
+	padding: 9px 14px;
+	font-size: 13px;
 }
 
 .price-list {
@@ -2163,7 +2165,7 @@ body,
 }
 
 .form-field {
-	margin-bottom: 18px;
+	margin-bottom: 26px;
 }
 
 .form-label {
@@ -2244,6 +2246,177 @@ body,
 /* Always-on accent variant (printers list). */
 .db-entry__delete-btn--accent {
 	color: var(--color-accent);
+}
+
+/* Edit sibling of the delete button — same shape, primary tint on hover. */
+.db-entry__edit-btn:hover {
+	color: var(--color-primary);
+	background: rgba(0, 230, 173, 0.15);
+	box-shadow: 0 0 10px rgba(0, 230, 173, 0.4);
+}
+
+/* ── Printer status dot (online / offline) ── */
+.printer-dot {
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	vertical-align: middle;
+	margin-right: 2px;
+}
+
+.printer-dot--on {
+	background: var(--color-primary);
+}
+
+.printer-dot--off {
+	background: var(--color-text-muted);
+}
+
+/* ── Printer picker dropdown (service form) ── */
+.printer-select__trigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	cursor: pointer;
+	text-align: left;
+	font-weight: 600;
+}
+
+.printer-select__trigger:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.printer-select__value {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.printer-select__placeholder {
+	color: var(--color-text-muted);
+	font-weight: 500;
+}
+
+.printer-select__menu {
+	z-index: 1100;
+	max-width: 420px;
+	max-height: 260px;
+	overflow-y: auto;
+	padding: 6px;
+	background: var(--color-bg-card);
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-lg);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	animation: fadeSlideIn var(--transition-base) both;
+}
+
+.printer-select__item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 9px 10px;
+	border: none;
+	background: none;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	font-family: var(--font-family);
+	font-size: 13px;
+	color: var(--color-text-primary);
+	text-align: left;
+	transition: background var(--transition-fast);
+}
+
+.printer-select__item:hover {
+	background: rgba(134, 150, 160, 0.12);
+}
+
+.printer-select__item--on {
+	background: rgba(0, 230, 173, 0.1);
+}
+
+.printer-select__item-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 600;
+}
+
+.printer-select__item-status {
+	flex-shrink: 0;
+	font-size: 11px;
+	color: var(--color-text-muted);
+}
+
+/* ── Form checkbox row ── */
+.form-check {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 11px 12px;
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-md);
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+	font-family: var(--font-family);
+	transition: all var(--transition-fast);
+}
+
+.form-check:hover:not(:disabled) {
+	border-color: var(--color-text-muted);
+}
+
+.form-check:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.form-check--on {
+	border-color: var(--color-primary);
+	background: rgba(0, 230, 173, 0.08);
+}
+
+.form-check__box {
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	border: 1.5px solid var(--border-light);
+	color: #111b21;
+}
+
+.form-check--on .form-check__box {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+}
+
+.form-check__box svg {
+	width: 12px;
+	height: 12px;
+}
+
+.form-check__label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-text-primary);
 }
 
 /* ── Registered printer that's currently unreachable — greyed, never removed ── */
