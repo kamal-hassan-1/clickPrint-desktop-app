@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { computeStats } from "../statsUtils";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { computeStats, buildEarningsSeries, EARNINGS_RANGES } from "../statsUtils";
 import { useAutoPrint } from "../AutoPrintContext";
 import {
 	WalletIcon,
@@ -52,14 +52,30 @@ function KpiCard({ icon, label, value, sub, accent, currency, delay = 0 }) {
 	);
 }
 
-// Earnings-per-day bar chart (last 7 days), bars grow in on mount.
-function EarningsChart({ series, max }) {
+// Earnings bar chart with a switchable time range (7 days / 1 month / 6 months).
+// Bucketing coarsens as the window widens (daily → weekly → monthly) so bars
+// stay legible; grows in on mount / range change.
+function EarningsChart({ series, max, range, onRangeChange }) {
 	const hasData = series.some((s) => s.amount > 0);
 	return (
 		<div className="panel panel--span2">
 			<div className="panel__head">
-				<h3 className="panel__title">Earnings · last 7 days</h3>
-				<span className="panel__hint">Completed jobs only</span>
+				<div>
+					<h3 className="panel__title">Earnings</h3>
+					<span className="panel__hint">Completed jobs only</span>
+				</div>
+				<div className="range-switch">
+					{EARNINGS_RANGES.map((opt) => (
+						<button
+							key={opt.value}
+							type="button"
+							className={`range-switch__btn ${range === opt.value ? "range-switch__btn--active" : ""}`}
+							onClick={() => onRangeChange(opt.value)}
+						>
+							{opt.label}
+						</button>
+					))}
+				</div>
 			</div>
 			{hasData ? (
 				<div className="bars">
@@ -77,7 +93,7 @@ function EarningsChart({ series, max }) {
 					))}
 				</div>
 			) : (
-				<div className="panel__empty">No earnings recorded in the last 7 days.</div>
+				<div className="panel__empty">No earnings recorded in this period.</div>
 			)}
 		</div>
 	);
@@ -184,6 +200,13 @@ function DashboardTab() {
 	const [stats, setStats] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const [earningsRange, setEarningsRange] = useState("7d");
+
+	const earningsSeries = useMemo(
+		() => (stats ? buildEarningsSeries(stats.earningsByDate, earningsRange) : []),
+		[stats, earningsRange]
+	);
+	const earningsMax = Math.max(1, ...earningsSeries.map((s) => s.amount));
 
 	const load = useCallback(async () => {
 		setLoading(true);
@@ -301,7 +324,12 @@ function DashboardTab() {
 					</div>
 
 					<div className="dash__grid">
-						<EarningsChart series={stats.series} max={stats.maxSeries} />
+						<EarningsChart
+						series={earningsSeries}
+						max={earningsMax}
+						range={earningsRange}
+						onRangeChange={setEarningsRange}
+					/>
 						<OutcomesPanel stats={stats} />
 						<ServicesPanel services={stats.topServices} maxUnits={stats.topServiceUnits} />
 						<TotalsPanel stats={stats} />

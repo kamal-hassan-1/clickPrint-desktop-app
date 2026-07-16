@@ -17,16 +17,83 @@ function isSameDay(iso, ref) {
 	);
 }
 
-// Oldest → newest list of the last `n` day-keys, including today.
-function lastNDays(n, ref) {
+function startOfDay(d) {
+	return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+// Sums every day in `earningsByDate` (keys are "YYYY-MM-DD") whose date falls in
+// [start, end).
+function sumEarningsInRange(earningsByDate, start, end) {
+	let total = 0;
+	for (const key in earningsByDate) {
+		const [y, m, d] = key.split("-").map(Number);
+		const date = new Date(y, m - 1, d);
+		if (date >= start && date < end) total += earningsByDate[key];
+	}
+	return total;
+}
+
+// Builds the earnings-chart series for a given range, bucketing daily for a
+// week, weekly for a month, and monthly for six months (fewer, more legible
+// bars as the window widens). `earningsByDate` comes from computeStats().
+export const EARNINGS_RANGES = [
+	{ value: "7d", label: "7 Days" },
+	{ value: "1m", label: "1 Month" },
+	{ value: "6m", label: "6 Months" },
+];
+
+export function buildEarningsSeries(earningsByDate, range, ref = new Date()) {
+	const today = startOfDay(ref);
+
+	if (range === "6m") {
+		const out = [];
+		for (let i = 5; i >= 0; i--) {
+			const start = new Date(today.getFullYear(), today.getMonth() - i, 1);
+			const end = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
+			out.push({
+				key: `${start.getFullYear()}-${start.getMonth()}`,
+				label: start.toLocaleDateString("en-US", { month: "short" }),
+				day: start.getFullYear() !== today.getFullYear() ? `'${String(start.getFullYear()).slice(-2)}` : "",
+				amount: sumEarningsInRange(earningsByDate, start, end),
+			});
+		}
+		return out;
+	}
+
+	if (range === "1m") {
+		// 5 weekly buckets covering the last 35 days, oldest first. Label is the
+		// full "Jul 3 - Jul 10" range so each bar is self-explanatory.
+		const out = [];
+		for (let i = 4; i >= 0; i--) {
+			const end = new Date(today);
+			end.setDate(today.getDate() - i * 7 + 1); // exclusive end
+			const start = new Date(end);
+			start.setDate(end.getDate() - 7);
+			const lastDay = new Date(end);
+			lastDay.setDate(end.getDate() - 1);
+			const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+			out.push({
+				key: `w-${start.getTime()}`,
+				label: `${fmt(start)} - ${fmt(lastDay)}`,
+				day: "",
+				amount: sumEarningsInRange(earningsByDate, start, end),
+			});
+		}
+		return out;
+	}
+
+	// "7d" (default): daily buckets.
 	const out = [];
-	for (let i = n - 1; i >= 0; i--) {
-		const d = new Date(ref);
-		d.setDate(ref.getDate() - i);
+	for (let i = 6; i >= 0; i--) {
+		const start = new Date(today);
+		start.setDate(today.getDate() - i);
+		const end = new Date(start);
+		end.setDate(start.getDate() + 1);
 		out.push({
-			key: dateKey(d.toISOString()),
-			label: d.toLocaleDateString("en-US", { weekday: "short" }),
-			day: d.getDate(),
+			key: dateKey(start),
+			label: start.toLocaleDateString("en-US", { weekday: "short" }),
+			day: start.getDate(),
+			amount: sumEarningsInRange(earningsByDate, start, end),
 		});
 	}
 	return out;
@@ -89,9 +156,6 @@ export function computeStats(history = []) {
 		}
 	}
 
-	const series = lastNDays(7, now).map((d) => ({ ...d, amount: earningsByDate[d.key] || 0 }));
-	const maxSeries = Math.max(1, ...series.map((s) => s.amount));
-
 	const topServices = Object.values(serviceCounts).sort((a, b) => b.units - a.units).slice(0, 5);
 	const topServiceUnits = topServices[0]?.units || 1;
 
@@ -113,8 +177,7 @@ export function computeStats(history = []) {
 		completionRate,
 		cancellationRate,
 		avgOrder,
-		series,
-		maxSeries,
+		earningsByDate,
 		topServices,
 		topServiceUnits,
 		mostDemanded: topServices[0] || null,
