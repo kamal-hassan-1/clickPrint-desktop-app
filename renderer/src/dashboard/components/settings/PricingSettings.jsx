@@ -39,22 +39,39 @@ function PriceForm({ price, printers, error, saving, onSave, onCancel }) {
 	const [pageType, setPageType] = useState(price.keys?.pageType || "A4");
 	const [sidedness, setSidedness] = useState(price.keys?.sidedness ?? false);
 
-	const firstPrinter = price.printers?.[0];
-	const [printerId, setPrinterId] = useState(printerIdOf(firstPrinter));
-	const [useAuto, setUseAuto] = useState(firstPrinter?.useAuto ?? false);
+	// One entry per selected printer. `useAuto` starts null so the operator has to
+	// make an explicit Yes/No choice for each.
+	const [printerSel, setPrinterSel] = useState(() =>
+		(price.printers || [])
+			.map((entry) => ({ printer: printerIdOf(entry), useAuto: entry.useAuto ?? null }))
+			.filter((entry) => entry.printer)
+	);
+
+	const selectedIds = printerSel.map((p) => p.printer);
+
+	// Keep the per-printer rows in sync with the dropdown, preserving any Yes/No
+	// already chosen for printers that stay selected.
+	const handlePrintersChange = (ids) =>
+		setPrinterSel(
+			ids.map((id) => printerSel.find((p) => p.printer === id) || { printer: id, useAuto: null })
+		);
+
+	const setUseAutoFor = (id, useAuto) =>
+		setPrinterSel((prev) => prev.map((p) => (p.printer === id ? { ...p, useAuto } : p)));
 
 	const name = serviceLabel({ pageType, colored, sidedness });
 	const rateNum = Number(rate);
 	const isRateInvalid = rate === "" || isNaN(rateNum) || rateNum < RATE_MIN || rateNum > RATE_MAX;
 	const noPrinters = printers.length === 0;
-	const isSubmitDisabled = saving || isRateInvalid || !printerId;
+	const autoUnanswered = printerSel.some((p) => p.useAuto === null);
+	const isSubmitDisabled = saving || isRateInvalid || printerSel.length === 0 || autoUnanswered;
 
 	const submit = (e) => {
 		e.preventDefault();
 		onSave({
 			rate: rateNum || 0,
 			keys: { pageType, colored, sidedness },
-			printers: printerId ? [{ useAuto, printer: printerId }] : [],
+			printers: printerSel.map((p) => ({ useAuto: !!p.useAuto, printer: p.printer })),
 		});
 	};
 
@@ -119,36 +136,67 @@ function PriceForm({ price, printers, error, saving, onSave, onCancel }) {
 			</div>
 
 			<div className="form-field">
-				<label className="form-label">Printer</label>
+				<label className="form-label">Printers</label>
 				<PrinterSelect
 					printers={printers}
-					value={printerId}
-					onChange={setPrinterId}
+					value={selectedIds}
+					onChange={handlePrintersChange}
 					disabled={saving || noPrinters}
 				/>
-				<span className="form-hint">
-					{noPrinters
-						? "Add a printer in the Printers tab before creating a service."
-						: "Select a printer to be assigned to this service."}
-				</span>
+				{(noPrinters || printerSel.length === 0) && (
+					<span className="form-hint">
+						{noPrinters
+							? "Add a printer in the Printers tab before creating a service."
+							: "Select one or more printers to be assigned to this service."}
+					</span>
+				)}
 			</div>
 
-			<div className="form-field">
-				<button
-					type="button"
-					className={`form-check ${useAuto ? "form-check--on" : ""}`}
-					onClick={() => setUseAuto((v) => !v)}
-					role="checkbox"
-					aria-checked={useAuto}
-					disabled={saving}
-				>
-					<span className="form-check__box">{useAuto && <CheckIcon />}</span>
-					<span className="form-check__label">Can automated printing be used for this service</span>
-				</button>
-				<span className="form-hint">
-					If checked, this service will be available to use automated printing.
-				</span>
-			</div>
+			{printerSel.length > 0 && (
+				<div className="form-field">
+					<label className="form-label">Automated printing</label>
+					<div className="auto-list">
+						{printerSel.map((sel) => {
+							const printer = printers.find((p) => p._id === sel.printer);
+							return (
+								<div className="auto-row" key={sel.printer}>
+									<span className="auto-row__printer">
+										<span className={`printer-dot ${printer?.online ? "printer-dot--on" : "printer-dot--off"}`} />
+										{printer?.label || "Unknown printer"}
+									</span>
+									<span className="auto-row__choices">
+										{[
+											{ label: "Yes", choice: true },
+											{ label: "No", choice: false },
+										].map(({ label, choice }) => {
+											const on = sel.useAuto === choice;
+											return (
+												<button
+													type="button"
+													key={label}
+													className={`form-check ${on ? "form-check--on" : ""}`}
+													onClick={() => setUseAutoFor(sel.printer, choice)}
+													role="checkbox"
+													aria-checked={on}
+													disabled={saving}
+												>
+													<span className="form-check__box">{on && <CheckIcon />}</span>
+													<span className="form-check__label">{label}</span>
+												</button>
+											);
+										})}
+									</span>
+								</div>
+							);
+						})}
+					</div>
+					{autoUnanswered && (
+						<span className="form-hint">
+							Choose whether each printer can be used for automated printing on this service.
+						</span>
+					)}
+				</div>
+			)}
 
 			<div className="action-panel">
 				<button type="button" className="btn-outline" onClick={onCancel} disabled={saving}>
@@ -313,8 +361,12 @@ function PricingSettings() {
 			) : (
 				<div className="price-list">
 					{prices.map((price) => {
-						const printerEntry = price.printers?.[0];
-						const printer = printers.find((p) => p._id === printerIdOf(printerEntry));
+						const bound = (price.printers || [])
+							.map((entry) => ({
+								useAuto: entry.useAuto,
+								printer: printers.find((p) => p._id === printerIdOf(entry)),
+							}))
+							.filter((entry) => entry.printer);
 						return (
 							<div
 								key={price._id}
@@ -333,14 +385,14 @@ function PricingSettings() {
 									<span className="db-entry__name">{price.name || serviceLabel(price.keys)}</span>
 									<span className="db-entry__meta">
 										{price.keys?.pageType} · {price.keys?.colored ? "Color" : "B&W"} · {price.keys?.sidedness ? "Double" : "Single"}
-										{printer && (
-											<>
+										{bound.map(({ printer, useAuto }) => (
+											<span key={printer._id}>
 												{" · "}
 												<span className={`printer-dot ${printer.online ? "printer-dot--on" : "printer-dot--off"}`} />
 												{printer.label}
-											</>
-										)}
-										{printerEntry?.useAuto && " · Auto"}
+												{useAuto && " (Auto)"}
+											</span>
+										))}
 									</span>
 								</div>
 								<div className="db-entry__price-actions">
