@@ -1,8 +1,7 @@
 const EventSource = require("eventsource");
 const { getAuth, setAuth, setJobs, clearAuth } = require("./state");
 
-// const API_BASE_URL = "https://clickprintbackend.wckd.pk"
-const API_BASE_URL = "http://localhost:3000"
+const API_BASE_URL = "https://clickprintbackend.wckd.pk"
 
 // The backend now nests each route's payload under a named key inside `data`
 // (e.g. { data: { jobs: [...] } } instead of { data: [...] }). Unwrap that named
