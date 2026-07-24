@@ -498,7 +498,14 @@ async function handleDispatchFailure(task, device, err) {
 // ── backend transitions ──────────────────────────────────────────────────────
 
 // Transitions a job to "printing" exactly once. Coalesces concurrent dispatches
-// of the same job (two files on two printers) into one PATCH.
+// of the same job (two files on two printers) into one PATCH sequence.
+//
+// The backend only permits single-step transitions submitted → queued →
+// printing. A job may still be "submitted" here: acknowledgement (submitted →
+// queued) is fire-and-forget and can lag behind an operator's quick manual
+// print. So step through "queued" first when needed — and if that PATCH is
+// rejected because the ack already landed backend-side (our cache is stale),
+// ignore it and let the "printing" step decide the real outcome.
 function ensureJobPrinting(jobId) {
 	if (engine.jobsMarkedPrinting.has(jobId)) return Promise.resolve(true);
 	const inflight = engine.printingPatches.get(jobId);
@@ -512,7 +519,20 @@ function ensureJobPrinting(jobId) {
 	}
 
 	const promise = (async () => {
-		const result = await updateJobStatus(jobId, "printing");
+		// Try "printing" directly — works when the job is already "queued".
+		let result = await updateJobStatus(jobId, "printing");
+
+		// A "submitted" job can't jump straight to "printing" (acknowledgement to
+		// "queued" is fire-and-forget and may lag an operator's quick print). The
+		// local cache may not reflect the real status either, so don't trust it:
+		// on any failure, step through "queued" and retry "printing".
+		if (!result?.success) {
+			console.warn(`[Engine] job ${jobId} → printing rejected (${result?.message}); stepping through queued`);
+			const queued = await updateJobStatus(jobId, "queued");
+			if (queued?.success) engine.overrides.set(jobId, "queued");
+			result = await updateJobStatus(jobId, "printing");
+		}
+
 		if (result?.success) {
 			engine.jobsMarkedPrinting.add(jobId);
 			engine.overrides.set(jobId, "printing");
